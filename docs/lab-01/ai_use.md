@@ -5,15 +5,15 @@
 ## Selected key prompts (6–10)
 | # | Prompt (summarised) | What I did with the result |
 |---|---------------------|----------------------------|
-| 1 | Summary report tasks and show implementation plan overview | Adopted the structured breakdown of the 4 lab issues, documentation files, and Mermaid workflow diagrams. |
-| 2 | Recommend report file format and submission structure | Adopted the 6-section template in Google Docs instead of LaTeX to keep documentation concise and focused. |
-| 3 | Show implementation plan for Issue 1 (Project Foundation) | Reviewed the step-by-step setup checklist for environment initialization, dependencies, and database verification. |
-| 4 | Check PostgreSQL download and local database status | Analyzed system services and identified that a dedicated Docker PostgreSQL instance was required on port 5432. |
-| 5 | Spin up a new PostgreSQL Docker container specifically for TokTickIT | Provisioned the `toktickit-db` container with default credentials matching `.env.example` to ensure environment consistency. |
-| 6 | Proceed with Issue 1 setup (install dependencies, create `.env`, test dev servers) | Executed client & server package installation, generated `.env` configurations, and verified builds and baseline tests. |
-| 7 | Diagnose fatal pathspec error when adding `package-lock.json` | Corrected the terminal working directory from workspace root (`SoftEn_Lab`) to project directory (`toktickit`). |
-| 8 | Draft PR #1 title and description against `lab1-staging` | Generated standardized PR markdown description with git diff summaries, test verification evidence, and issue closing tag. |
-| 9 | Resolve Git remote conflict and isolate `toktickit` repository from old `Vanz` repo | Re-initialized a clean, independent `.git` repository for `toktickit` and pushed `lab1-staging` and `feature/1-project-foundation`. |
+| 1 | Summarize Lab 1 requirements, issue dependencies, and test specifications | Adopted the structured breakdown of the 4 lab issues, documentation files, and Git Flow branching strategy. |
+| 2 | Recommend report format, PDF submission structure, and grading evidence | Adopted the required submission sections and verified required markdown files (`ai_use.md`, `reviewer.md`, `tests.md`). |
+| 3 | Plan and initialize Issue 1 project foundation and PostgreSQL Docker container | Provisioned the `toktickit-db` container (PostgreSQL 17 on port 5432), installed dependencies, and configured `.env`. |
+| 4 | Diagnose Git pathspec error and isolate `toktickit` into an independent repository | Resolved working directory mismatches, created a clean `.git` repository, and pushed `lab1-staging` and `feature/1-project-foundation`. |
+| 5 | Implement Issue 2 Health Check endpoint (`GET /api/health`) and run pre-flight tests | Implemented `/api/health` in Express `app.ts`, executed Vitest/Supertest suite with 0 failures, and documented evidence in `tests.md`. |
+| 6 | Cross-reference Lab 1 Labsheet requirements for Issue 3 Category schema and seed | Verified `Category` model specifications (§9) and the 4 required categories with idempotency requirements. |
+| 7 | Create branch `feature/3-category-seed`, apply Prisma migration, and implement idempotent seed | Added `Category` model to `schema.prisma`, ran `prisma migrate dev --name init`, and implemented idempotent category seeding with `upsert` in `seed.ts`. |
 
 ## Reflection
-Structuring prompts to ask for an implementation plan and verification steps before executing actions made the agent responses much more reliable and aligned with the lab requirements. When Git commands failed due to working directory mismatches and nested repository conflicts with a previous project (`Vanz`), I prompted the agent to diagnose the root cause and isolate `toktickit` into its own dedicated Git repository.
+Structuring prompts to require an implementation plan and verification steps before executing actions made the agent responses much more reliable and aligned with the lab requirements. When Git commands failed due to working directory mismatches and nested repository conflicts with a previous project (`Vanz`), I prompted the agent to diagnose the root cause and isolate `toktickit` into its own dedicated Git repository. Cross-referencing requirements directly against the Lab 1 Labsheet guaranteed strict adherence to the schema, idempotency, and Kanban conventions.
+
+
