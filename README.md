@@ -95,7 +95,24 @@ cd ../server && npm install
 
 ---
 
-### 5. Running the Application Locally
+### 5. Database Migration and Seeding
+
+Apply the Prisma database migrations and seed the initial category data:
+
+```bash
+# In server/
+cd server
+
+# Apply database migrations
+npx prisma migrate dev
+
+# Seed the 4 IT request categories
+npm run prisma:seed
+```
+
+---
+
+### 6. Running the Application Locally
 
 Start the backend and frontend dev servers concurrently:
 
@@ -109,7 +126,7 @@ cd client && npm run dev
 
 ---
 
-### 6. Running Automated Tests
+### 7. Running Automated Tests
 
 Run the Vitest and Supertest test suites:
 
