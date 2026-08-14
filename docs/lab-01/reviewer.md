@@ -9,7 +9,7 @@
 | #5 | feature/1-project-foundation | Approved (after updating docs) |
 | #6 | feature/2-health-check | Approved (paired workflow with Feature 3) |
 | #7 | feature/3-category-seed | Approved (after updating README setup steps) |
-|    | feature/4-category-list | Pending |
+| #8 | feature/4-category-list | Changes requested (robust ID assertions) → Approved |
 
 ### Reviewer Comments Received & Responses
 
@@ -21,9 +21,17 @@
 - **Reviewer comment I received:** `The health check is verified. The schema is faithful to the spec and the seed is genuinely idempotent. Committing migration_lock.toml alongside the migration is good catch and prevents drift. The sequential for...of upsert gives deterministic IDs (Account and Access=1 ... Network=4), which is precisely what the Issue 4 "in id order" assertion depends on. Feedback: In README.md, migrate and seed steps are missing between install and running locally.`
 - **How I responded:** Added Step 5 (Database Migration and Seeding: `npx prisma migrate dev` and `npm run prisma:seed`) into `README.md`, renumbered subsequent steps, explicitly noted deterministic ID generation (1..4) in the PR description for Issue 4's dependency, and pushed the updates to the branch.
 
-#### PR for `feature/4-category-list`
-- **Reviewer comment I received:** <waiting for partner review>
-- **How I responded:** <fill in after partner responds>
+#### PR #8 (`feature/4-category-list`)
+- **Reviewer comment I received:**
+  ```text
+  good to see the compiled .js artifacts removed and "noEmit": true added to client/tsconfig.json — that resolves the PR #5 item, and ai_use.md prompt #10 records it honestly as the cause of the ESM mock trouble. The .gitignore guard is now optional belt-and-braces; noEmit alone prevents a recurrence.
+  Feedback & Suggestions:
+  server/tests/lab-01/categories.test.ts — the assertion is tied to autoincrement ids: This is the one I would change before merging. The test hits the real database and asserts [{ id: 1, ... }, { id: 2, ... }, …] exactly. id comes from a Postgres sequence, which does not reset when rows are deleted, so the moment anyone re-runs a migration on a dirty volume, deletes and re-seeds, or runs prisma migrate reset at a different point in the sequence, the categories come back as ids 5–8 and the test goes red while the endpoint is working perfectly. Asserting the ordering rather than the literal ids keeps the actual requirement ("in id order") intact and survives a re-seed.
+  ```
+- **How I responded:**
+  ```text
+  Updated server/tests/lab-01/categories.test.ts to decouple the test from literal sequence IDs (1..4). The revised test asserts that res.body returns 4 categories with names in the exact expected order (["Account and Access", "Hardware", "Software", "Network"]) and validates that each id is a valid number strictly ascending (ids[i] > ids[i - 1]). This keeps the "in id order" requirement 100% verified while ensuring full resilience against sequence increments from database resets or re-seeding. Re-ran test suites and verified all tests pass.
+  ```
 
 ---
 
