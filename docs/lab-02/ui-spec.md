@@ -128,3 +128,34 @@
 | **Tablet Layout** | Responsive 2-column layout without overlapping elements on $768\text{px}-991\text{px}$ | [ ] |
 | **Mobile Layout** | Single-column stacked layout, card views, $\ge 44\text{px}$ touch targets on $< 768\text{px}$ | [ ] |
 | **Zero Overflow** | No unintended horizontal scrollbars at any screen width | [ ] |
+
+---
+
+## 6. Planned Screenshot Artifact Paths
+
+The following screenshot evidence paths are planned for submission (Answer Parts 6-9):
+
+### 6.1. Create Ticket (`artifacts/lab-02/screenshots/create-ticket/`)
+- `01-requester-selector.png`: Development Requester selection modal with active user dropdown.
+- `02-create-ticket-initial-desktop.png`: Create Ticket form initial state at Desktop ($\ge 992\text{px}$).
+- `03-validation-errors.png`: Inline field error messages immediately below invalid controls.
+- `04-submitting-busy-state.png`: Submit button in disabled busy state with loading spinner.
+- `05-create-success-banner.png`: Green success confirmation showing generated Ticket Number.
+- `06-api-failure-preserved.png`: Network/server failure banner with all form inputs preserved.
+- `07-invalid-attachment-alert.png`: Error alert on oversized file (>5MB) or invalid extension.
+
+### 6.2. My Tickets (`artifacts/lab-02/screenshots/my-tickets/`)
+- `01-my-tickets-desktop.png`: Multi-column data table with status and priority badges.
+- `02-my-tickets-mobile.png`: Single-column stacked card representation at $< 768\text{px}$.
+- `03-search-and-filtered.png`: Filtered results by category, priority, and search keyword.
+- `04-empty-state.png`: Empty queue graphic and "+ Create Ticket" call-to-action for new user.
+- `05-no-results-state.png`: "No matching tickets found" with "Clear Filters" button.
+- `06-switch-requester-isolation.png`: Evidence showing User A's tickets disappear when switching to User B.
+
+### 6.3. Ticket Detail & Attachments (`artifacts/lab-02/screenshots/ticket-detail/`)
+- `01-ticket-detail-readonly.png`: Read-only ticket header with shaded `#F0F4F1` fields.
+- `02-active-attachments-list.png`: List of active attachments with download and remove buttons.
+- `03-upload-attachment-modal.png`: Add attachment dialog enforcing 5-active-file limit.
+- `04-soft-remove-modal.png`: Mandatory removal reason prompt and confirmation dialog.
+- `05-removed-attachment-audit.png`: Removed attachment shown in audit list with blocked download.
+- `06-cross-requester-404.png`: Evidence of 404 response on attempting to view another user's ticket.
