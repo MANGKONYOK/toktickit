@@ -42,7 +42,7 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
       setRequesters(safeData);
 
       // If stored requester is no longer in active list, clear it
-      if (currentRequester && safeData.length > 0) {
+      if (currentRequester) {
         const stillActive = safeData.find((r) => r.id === currentRequester.id);
         if (!stillActive) {
           setCurrentRequesterState(null);
