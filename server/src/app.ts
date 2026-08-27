@@ -6,37 +6,92 @@ import { getPrisma } from "./prisma.js";
 // Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());          // already wired: lets the Vite dev server call this API
+app.use(cors());
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
-// Issue 2 — API health check
-// Make the test in tests/lab-01/health.test.ts pass.
-// It must return HTTP 200 with JSON: { status: "ok", service: "TokTickIT API" }
+// Health check
 // ---------------------------------------------------------------------------
 app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok", service: "TokTickIT API" });
 });
 
 // ---------------------------------------------------------------------------
-// Issue 4 — Category list
-// Add:  GET /api/categories
-//   -> read categories from PostgreSQL via getPrisma().category.findMany(...)
-//   -> return each { id, name } in a predictable (id) order
-//   -> on failure, respond 500 with a safe message (no internal details)
+// Lab 2 Endpoint 1 — GET /api/categories
 // ---------------------------------------------------------------------------
 app.get("/api/categories", async (_req: Request, res: Response) => {
   try {
     const categories = await getPrisma().category.findMany({
+      where: { isActive: true },
       orderBy: { id: "asc" },
       select: {
         id: true,
         name: true,
+        isActive: true,
       },
     });
     res.status(200).json(categories);
   } catch {
-    res.status(500).json({ error: "Failed to fetch categories" });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to fetch categories",
+      },
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 Endpoint 2 - GET /api/related-systems
+// ---------------------------------------------------------------------------
+app.get("/api/related-systems", async (_req: Request, res: Response) => {
+  try {
+    const relatedSystems = await getPrisma().relatedSystem.findMany({
+      where: { isActive: true },
+      orderBy: { id: "asc" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isActive: true,
+      },
+    });
+    res.status(200).json(relatedSystems);
+  } catch {
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to fetch related systems",
+      },
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 Endpoint 3 - GET /api/requesters
+// Retrieve active Development Requesters for the simulated selector (BR-04)
+// ---------------------------------------------------------------------------
+app.get("/api/requesters", async (_req: Request, res: Response) => {
+  try {
+    const requesters = await getPrisma().requesterUser.findMany({
+      where: { isActive: true },
+      orderBy: { id: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        department: true,
+        isActive: true,
+      },
+    });
+    res.status(200).json(requesters);
+  } catch {
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to fetch development requesters",
+      },
+    });
   }
 });
 
