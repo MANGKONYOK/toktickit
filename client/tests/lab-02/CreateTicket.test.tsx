@@ -173,4 +173,31 @@ describe("CreateTicket Component (UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-
       "Valid Description text that should not be wiped when API throws an error."
     );
   });
+
+  it("shows error alert and retry button when reference data loading fails", async () => {
+    vi.spyOn(api, "fetchCategories").mockRejectedValueOnce(
+      new Error("Categories service unavailable")
+    );
+
+    await openCreateTicketTab();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Failed to load reference data/i)
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: /Retry Loading/i })).toBeInTheDocument();
+
+    // Now mock success on retry
+    vi.spyOn(api, "fetchCategories").mockResolvedValue(MOCK_CATEGORIES);
+    const retryBtn = screen.getByRole("button", { name: /Retry Loading/i });
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Failed to load reference data/i)
+      ).not.toBeInTheDocument();
+    });
+  });
 });

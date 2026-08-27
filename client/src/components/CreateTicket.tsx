@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 import {
   fetchCategories,
@@ -28,6 +28,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
   const [isLoadingReferences, setIsLoadingReferences] = useState<boolean>(true);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
 
   // Form State
   const [categoryId, setCategoryId] = useState<number | "">("");
@@ -42,30 +43,36 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
   const [serverError, setServerError] = useState<string | null>(null);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
 
-  useEffect(() => {
-    async function loadReferenceData() {
-      setIsLoadingReferences(true);
-      try {
-        const [cats, systems] = await Promise.all([
-          fetchCategories(),
-          fetchRelatedSystems(),
-        ]);
-        const safeCats = Array.isArray(cats) ? cats : [];
-        const safeSystems = Array.isArray(systems) ? systems : [];
-        setCategories(safeCats);
-        setRelatedSystems(safeSystems);
+  const loadReferenceData = useCallback(async () => {
+    setIsLoadingReferences(true);
+    setReferenceError(null);
+    try {
+      const [cats, systems] = await Promise.all([
+        fetchCategories(),
+        fetchRelatedSystems(),
+      ]);
+      const safeCats = Array.isArray(cats) ? cats : [];
+      const safeSystems = Array.isArray(systems) ? systems : [];
+      setCategories(safeCats);
+      setRelatedSystems(safeSystems);
 
-        if (safeCats.length > 0) setCategoryId(safeCats[0].id);
-        if (safeSystems.length > 0) setRelatedSystemId(safeSystems[0].id);
-      } catch (err) {
-        console.error("Failed to load reference data:", err);
-      } finally {
-        setIsLoadingReferences(false);
+      if (safeCats.length === 0 || safeSystems.length === 0) {
+        setReferenceError("No active categories or related systems were found. Please verify the system configuration.");
+        return;
       }
-    }
 
-    loadReferenceData();
+      if (safeCats.length > 0) setCategoryId(safeCats[0].id);
+      if (safeSystems.length > 0) setRelatedSystemId(safeSystems[0].id);
+    } catch (err: any) {
+      setReferenceError(err?.message || "Failed to load ticket categories and related systems.");
+    } finally {
+      setIsLoadingReferences(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadReferenceData();
+  }, [loadReferenceData]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -103,6 +110,11 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
+
+    if (referenceError) {
+      setServerError("Cannot submit ticket because reference data failed to load. Please retry.");
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -229,6 +241,33 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
         </p>
       </div>
 
+      {referenceError && (
+        <div className="alert alert-danger mb-4 d-flex align-items-center justify-content-between" role="alert">
+          <div className="d-flex align-items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              fill="currentColor"
+              className="me-2 flex-shrink-0"
+              viewBox="0 0 16 16"
+            >
+              <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2" />
+            </svg>
+            <div>
+              <strong>Failed to load reference data:</strong> {referenceError}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger ms-3 text-nowrap"
+            onClick={() => loadReferenceData()}
+          >
+            Retry Loading
+          </button>
+        </div>
+      )}
+
       {serverError && (
         <div className="alert alert-danger mb-4 d-flex align-items-center" role="alert">
           <svg
@@ -260,7 +299,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
                 setCategoryId(Number(e.target.value));
                 if (errors.categoryId) setErrors({ ...errors, categoryId: undefined });
               }}
-              disabled={isLoadingReferences || isSubmitting}
+              disabled={isLoadingReferences || isSubmitting || !!referenceError}
               required
             >
               {categories.map((c) => (
@@ -287,7 +326,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
                 setRelatedSystemId(Number(e.target.value));
                 if (errors.relatedSystemId) setErrors({ ...errors, relatedSystemId: undefined });
               }}
-              disabled={isLoadingReferences || isSubmitting}
+              disabled={isLoadingReferences || isSubmitting || !!referenceError}
               required
             >
               {relatedSystems.map((s) => (
@@ -314,7 +353,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
                 setRequestedPriority(e.target.value as Priority);
                 if (errors.requestedPriority) setErrors({ ...errors, requestedPriority: undefined });
               }}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !!referenceError}
               required
             >
               <option value="LOW">Low (Minor convenience)</option>
@@ -349,7 +388,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
               setSummary(e.target.value);
               if (errors.summary) setErrors({ ...errors, summary: undefined });
             }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!referenceError}
             required
           />
           {errors.summary && (
@@ -378,7 +417,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
               setDescription(e.target.value);
               if (errors.description) setErrors({ ...errors, description: undefined });
             }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!referenceError}
             required
           />
           {errors.description && (
@@ -399,7 +438,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
           <button
             type="submit"
             className="btn btn-zen-primary px-4 d-flex align-items-center"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!referenceError}
           >
             {isSubmitting ? (
               <>

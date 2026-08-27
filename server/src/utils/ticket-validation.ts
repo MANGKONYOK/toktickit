@@ -11,14 +11,20 @@ export interface ValidationResult {
 export const VALID_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 export type PriorityType = (typeof VALID_PRIORITIES)[number];
 
-export function validateTicketInput(input: {
-  requesterId?: unknown;
-  categoryId?: unknown;
-  relatedSystemId?: unknown;
-  requestedPriority?: unknown;
-  summary?: unknown;
-  description?: unknown;
-}): ValidationResult {
+export function validateTicketInput(input: any): ValidationResult {
+  // Guard against null, undefined, or non-object top-level input
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {
+      isValid: false,
+      errors: [
+        {
+          field: "payload",
+          message: "Request body must be a valid JSON object",
+        },
+      ],
+    };
+  }
+
   const errors: FieldError[] = [];
 
   // 1. requesterId validation

@@ -17,6 +17,18 @@ describe("Ticket Input Validation (UNIT-02 / AC-05, BR-05)", () => {
     expect(result.errors).toHaveLength(0);
   });
 
+  it("handles null, undefined, or array inputs safely with validation error", () => {
+    const nullResult = validateTicketInput(null);
+    expect(nullResult.isValid).toBe(false);
+    expect(nullResult.errors[0].field).toBe("payload");
+
+    const undefinedResult = validateTicketInput(undefined);
+    expect(undefinedResult.isValid).toBe(false);
+
+    const arrayResult = validateTicketInput([]);
+    expect(arrayResult.isValid).toBe(false);
+  });
+
   it("rejects summary shorter than 5 characters after trimming", () => {
     const result = validateTicketInput({
       ...validPayload,

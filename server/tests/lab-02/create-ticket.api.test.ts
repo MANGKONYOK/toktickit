@@ -81,6 +81,15 @@ describe("POST /api/tickets (API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02
     expect(errorFields).toContain("description");
   });
 
+  it("API-02 / AC-05: returns 400 Bad Request instead of 500 when payload is null", async () => {
+    const res = await request(app)
+      .post("/api/tickets")
+      .send(null as any);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("API-03 / AC-05: rejects non-existent or inactive category/system/requester with 404 Not Found", async () => {
     const payloadWithInvalidFk = {
       requesterId: 999999, // Non-existent
