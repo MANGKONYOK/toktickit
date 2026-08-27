@@ -10,6 +10,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
 model RequesterUser {
   id         Int      @id @default(autoincrement())
   fullName   String
@@ -17,6 +32,8 @@ model RequesterUser {
   department String
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
+
+  tickets Ticket[]
 }
 
 model Category {
@@ -24,6 +41,8 @@ model Category {
   name      String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  tickets Ticket[]
 }
 
 model RelatedSystem {
@@ -32,4 +51,35 @@ model RelatedSystem {
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+
+  tickets Ticket[]
+}
+
+model TicketSequence {
+  year         Int @id
+  lastSequence Int @default(0)
+}
+
+model Ticket {
+  id                Int          @id @default(autoincrement())
+  ticketNumber      String       @unique
+  requesterId       Int
+  categoryId        Int
+  relatedSystemId   Int
+  requestedPriority Priority     @default(MEDIUM)
+  itPriority        Priority     @default(MEDIUM)
+  currentStatus     TicketStatus @default(NEW)
+  summary           String
+  description       String
+  ticketOwner       String       @default("Unassigned")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  requester     RequesterUser @relation(fields: [requesterId], references: [id])
+  category      Category      @relation(fields: [categoryId], references: [id])
+  relatedSystem RelatedSystem @relation(fields: [relatedSystemId], references: [id])
+
+  @@index([requesterId])
+  @@index([createdAt(sort: Desc)])
+  @@index([categoryId])
 }

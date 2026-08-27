@@ -1,5 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
+export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TicketStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" | "CANCELLED";
+
 export interface RequesterUser {
   id: number;
   fullName: string;
@@ -19,6 +22,34 @@ export interface RelatedSystem {
   name: string;
   description?: string | null;
   isActive?: boolean;
+}
+
+export interface Ticket {
+  id: number;
+  ticketNumber: string;
+  requesterId: number;
+  categoryId: number;
+  relatedSystemId: number;
+  requestedPriority: Priority;
+  itPriority: Priority;
+  currentStatus: TicketStatus;
+  summary: string;
+  description: string;
+  ticketOwner: string;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category;
+  relatedSystem?: RelatedSystem;
+  requester?: RequesterUser;
+}
+
+export interface CreateTicketPayload {
+  requesterId: number;
+  categoryId: number;
+  relatedSystemId: number;
+  requestedPriority: Priority;
+  summary: string;
+  description: string;
 }
 
 export interface SystemStatus {
@@ -69,5 +100,31 @@ export async function fetchRelatedSystems(): Promise<RelatedSystem[]> {
   if (!res.ok) {
     throw new Error(`Failed to fetch related systems: HTTP ${res.status}`);
   }
+  return res.json();
+}
+
+export async function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
+  const res = await fetch(`${API_URL}/api/tickets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-requester-id": String(payload.requesterId),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const message =
+      errorData.error?.message ||
+      (errorData.error?.fieldErrors
+        ? errorData.error.fieldErrors.map((f: any) => f.message).join(", ")
+        : `Ticket creation failed with status ${res.status}`);
+    const error = new Error(message);
+    (error as any).status = res.status;
+    (error as any).fieldErrors = errorData.error?.fieldErrors;
+    throw error;
+  }
+
   return res.json();
 }
