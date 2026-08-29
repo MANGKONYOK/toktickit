@@ -41,12 +41,15 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
       const safeData = Array.isArray(data) ? data : [];
       setRequesters(safeData);
 
-      // If stored requester is no longer in active list, clear it
+      // If stored requester is no longer in active list, clear it; otherwise sync fresh server fields
       if (currentRequester) {
         const stillActive = safeData.find((r) => r.id === currentRequester.id);
         if (!stillActive) {
           setCurrentRequesterState(null);
           localStorage.removeItem(STORAGE_KEY);
+        } else {
+          setCurrentRequesterState(stillActive);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(stillActive));
         }
       }
     } catch (err) {

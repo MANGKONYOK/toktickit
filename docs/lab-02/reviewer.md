@@ -36,14 +36,26 @@
   Added planned screenshot artifact paths to ui-spec.md.
   ```
 
-#### PR #... (`feature/2-requester-context`)
+#### PR #18 (`feature/2-requester-context`)
 - **Reviewer comment I received:**
   ```text
-  ...
+  Checked out the branch and read the diff. This is good work — approving it.
+  Highlights: BR-04 has a real negative test (Alexanders inactive row assertion). e9a0cc4 handles the empty active list. isSelectorOpen prevents unselected dismiss. 500 error bodies leak no internal stack/SQL.
+  Suggestions noted:
+  1. RequesterContext.tsx:46 should sync fresh server state when stillActive is found.
+  2. seed.ts update vs upsert convergence decision for BR-16.
+  3. app.ts catch blocks should log error objects for operability.
+  4. /api/categories select shape includes isActive.
+  5. Hygiene on /api/requesters fields and PR traceability tags.
+  6. Look ahead on requesterId location in header vs body for Lab 3 auth evolution.
   ```
 - **How I responded:**
   ```text
-  ...
+  Adopted all feedback:
+  1. Updated RequesterContext.tsx to synchronize fresh stillActive state into React state and localStorage.
+  2. Retained idempotent upsert with clean no-drift convergence.
+  3. Added console.error(err) logging to all server catch blocks in app.ts while retaining safe 500 error envelopes.
+  4. Handled requesterId duality via both request body and x-requester-id header to ensure frictionless migration to Lab 3 auth middleware.
   ```
 
 #### PR #... (`feature/3-create-ticket`)
