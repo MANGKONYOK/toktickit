@@ -41,7 +41,7 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
       const safeData = Array.isArray(data) ? data : [];
       setRequesters(safeData);
 
-      // If stored requester is no longer in active list, clear it; otherwise sync fresh server fields
+      // When server list is successfully fetched, reconcile the persisted requester
       if (currentRequester) {
         const stillActive = safeData.find((r) => r.id === currentRequester.id);
         if (!stillActive) {
@@ -54,9 +54,8 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       setRequesters([]);
-      setCurrentRequesterState(null);
-      localStorage.removeItem(STORAGE_KEY);
       setError(err instanceof Error ? err.message : "Failed to load development requesters");
+      // Preserve localStorage on transient error; the gate remains locked via isSelectorOpen
     } finally {
       setIsLoading(false);
     }
@@ -79,10 +78,18 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
 
   const openSelector = () => setIsSelectorOpen(true);
   const closeSelector = () => {
-    if (currentRequester) {
+    // Only allow manual dismissal if a verified active requester is selected without errors
+    if (currentRequester && !error && requesters.length > 0) {
       setIsSelectorOpen(false);
     }
   };
+
+  // Lock the gate open if no requester is selected, if a fetch error occurred, or if no active requesters exist
+  const isGateLockedOpen =
+    isSelectorOpen ||
+    !currentRequester ||
+    Boolean(error) ||
+    (requesters.length === 0 && !isLoading);
 
   return (
     <RequesterContext.Provider
@@ -92,7 +99,7 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
         requesters,
         isLoading,
         error,
-        isSelectorOpen: isSelectorOpen || !currentRequester,
+        isSelectorOpen: isGateLockedOpen,
         openSelector,
         closeSelector,
         refreshRequesters,
