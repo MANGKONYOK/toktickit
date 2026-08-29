@@ -54,6 +54,8 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       setRequesters([]);
+      setCurrentRequesterState(null);
+      localStorage.removeItem(STORAGE_KEY);
       setError(err instanceof Error ? err.message : "Failed to load development requesters");
     } finally {
       setIsLoading(false);
