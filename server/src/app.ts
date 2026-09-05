@@ -33,7 +33,8 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
       },
     });
     res.status(200).json(categories);
-  } catch {
+  } catch (err) {
+    console.error("GET /api/categories failed:", err);
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
@@ -59,7 +60,8 @@ app.get("/api/related-systems", async (_req: Request, res: Response) => {
       },
     });
     res.status(200).json(relatedSystems);
-  } catch {
+  } catch (err) {
+    console.error("GET /api/related-systems failed:", err);
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
@@ -87,7 +89,8 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
       },
     });
     res.status(200).json(requesters);
-  } catch {
+  } catch (err) {
+    console.error("GET /api/requesters failed:", err);
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
