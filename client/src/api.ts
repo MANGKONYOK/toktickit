@@ -157,9 +157,6 @@ export async function fetchMyTickets(
 ): Promise<PaginatedTicketsResponse> {
   const query = new URLSearchParams();
 
-  if (params.requesterId !== undefined) {
-    query.set("requesterId", String(params.requesterId));
-  }
   if (params.search) {
     query.set("search", params.search);
   }

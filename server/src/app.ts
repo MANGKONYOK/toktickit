@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import { randomUUID } from "crypto";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticket-number.js";
 import { validateTicketInput, PriorityType } from "./utils/ticket-validation.js";
@@ -106,7 +107,7 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 // Retrieve selected requester's tickets with search, multi-filter, sorting & pagination
 // ---------------------------------------------------------------------------
 app.get("/api/tickets", async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
     const parseResult = parseTicketQueryParams(req.query, req.headers);
     if (!parseResult.isValid || !parseResult.params) {
@@ -187,7 +188,8 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
-        orderBy: { [sortBy]: sortOrder },
+        // Deterministic ordering: secondary sort key on id: "desc" prevents page drift
+        orderBy: [{ [sortBy]: sortOrder }, { id: "desc" }],
         skip,
         take: limit,
         include: {
@@ -198,7 +200,8 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
             select: { id: true, name: true },
           },
           requester: {
-            select: { id: true, fullName: true, email: true, department: true },
+            // Expose only necessary fields in list view, omitting email and department
+            select: { id: true, fullName: true },
           },
         },
       }),

@@ -38,8 +38,8 @@ export function parseTicketQueryParams(
 ): QueryParseResult {
   const errors: Record<string, string> = {};
 
-  // Resolve requesterId with header duality fallback
-  const rawRequesterId = query.requesterId ?? headers["x-requester-id"];
+  // Resolve requesterId: header identity takes absolute precedence to prevent query-param tenant spoofing (AC-03)
+  const rawRequesterId = headers["x-requester-id"] ?? query.requesterId;
   if (rawRequesterId === undefined || rawRequesterId === null || rawRequesterId === "") {
     errors.requesterId = "requesterId is required";
   }

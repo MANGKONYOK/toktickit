@@ -170,6 +170,37 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
       expect(res.body.tickets[0].requesterId).toBe(userBId);
     });
 
+    it("enforces header authority and prevents spoofing: sending User A's header with ?requesterId=User_B returns ONLY User A's tickets (AC-03)", async () => {
+      // User A (John Doe) sends authenticated/simulated header for User A,
+      // but maliciously appends query param ?requesterId=User_B (Jane Doe)
+      const res = await request(app)
+        .get("/api/tickets")
+        .set("x-requester-id", String(userAId))
+        .query({ requesterId: userBId });
+
+      expect(res.status).toBe(200);
+      expect(res.body.tickets.length).toBe(3); // User A has 3 tickets
+      for (const t of res.body.tickets) {
+        expect(t.requesterId).toBe(userAId);
+        expect(t.requesterId).not.toBe(userBId);
+      }
+    });
+
+    it("omits sensitive requester email and department from list rows", async () => {
+      const res = await request(app)
+        .get("/api/tickets")
+        .set("x-requester-id", String(userAId));
+
+      expect(res.status).toBe(200);
+      expect(res.body.tickets.length).toBeGreaterThan(0);
+      const first = res.body.tickets[0];
+      expect(first.requester).toBeDefined();
+      expect(first.requester.id).toBe(userAId);
+      expect(first.requester.fullName).toBeDefined();
+      expect(first.requester.email).toBeUndefined();
+      expect(first.requester.department).toBeUndefined();
+    });
+
     it("returns 400 Bad Request when requesterId is missing", async () => {
       const res = await request(app).get("/api/tickets");
 

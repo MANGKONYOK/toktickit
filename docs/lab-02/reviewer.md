@@ -93,14 +93,23 @@
   10. Changed CRITICAL to URGENT in docs/lab-02/ui-spec.md.
   ```
 
-#### PR #... (`feature/4-my-tickets`)
+#### PR #20 (`feature/4-my-tickets`)
 - **Reviewer comment I received:**
   ```text
-  ...
+  1. [Issue - Blocker] ticket-query.ts:42 : query.requesterId ?? headers["x-requester-id"] puts query param first, so ?requesterId=<anyone> overrides header and defeats AC-03 isolation. client/src/api.ts:161 sends the param and :193 sends the header.
+  2. [Issue - Blocker] my-tickets.api.test.ts : Nothing sends User A's identity and asks for User B's data to test true isolation defense.
+  3. [Warning] app.ts:190 : orderBy: { [sortBy]: sortOrder } has no secondary key, so rows sharing a sort value can repeat or vanish across pages. Add id: "desc" tiebreaker.
+  4. [Warning] app.ts:201 : list rows include email and department unnecessarily.
+  5. [Warning] app.ts:109 : req-${Date.now()} can collide within the same millisecond; use randomUUID().
   ```
 - **How I responded:**
   ```text
-  ...
+  Resolved all 5 items:
+  1. Prioritized headers["x-requester-id"] ?? query.requesterId in ticket-query.ts and dropped query.set("requesterId", ...) from client/src/api.ts so client strictly uses header.
+  2. Added an explicit anti-spoofing isolation test in my-tickets.api.test.ts (sending User A's header while querying ?requesterId=User_B) asserting User B's tickets are never returned.
+  3. Added secondary sort key [{ [sortBy]: sortOrder }, { id: "desc" }] in app.ts for deterministic pagination.
+  4. Restricted requester select to only { id: true, fullName: true } on list endpoint to avoid PII exposure.
+  5. Replaced Date.now() with crypto.randomUUID() for collision-free correlationId generation.
   ```
 
 #### PR #... (`feature/5-ticket-detail-attachments`)
