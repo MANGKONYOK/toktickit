@@ -20,6 +20,22 @@ export const ALLOWED_MIME_TYPES = [
   "application/pdf",
 ];
 
+export const ALLOWED_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".pdf",
+];
+
+const MIME_BY_EXT: Record<string, string[]> = {
+  ".jpg": ["image/jpeg"],
+  ".jpeg": ["image/jpeg"],
+  ".png": ["image/png"],
+  ".webp": ["image/webp"],
+  ".pdf": ["application/pdf"],
+};
+
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const storage = multer.diskStorage({
@@ -28,7 +44,7 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname) || "";
+    const ext = path.extname(file.originalname).toLowerCase() || "";
     cb(null, `${uniqueSuffix}${ext}`);
   },
 });
@@ -39,11 +55,22 @@ export const uploadMiddleware = multer({
     fileSize: MAX_FILE_SIZE,
   },
   fileFilter: (_req, file, cb) => {
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!ALLOWED_EXTENSIONS.includes(ext) || !ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       const err = new Error("Unsupported media type. Only JPG, PNG, WEBP, and PDF files are allowed.");
       (err as any).code = "UNSUPPORTED_MEDIA_TYPE";
       return cb(err);
     }
+
+    // Double check that extension aligns with MIME type (blocks disguised executables / zips)
+    const allowedMimesForExt = MIME_BY_EXT[ext];
+    if (allowedMimesForExt && !allowedMimesForExt.includes(file.mimetype)) {
+      const err = new Error("Unsupported media type. File extension does not match declared MIME type.");
+      (err as any).code = "UNSUPPORTED_MEDIA_TYPE";
+      return cb(err);
+    }
+
     cb(null, true);
   },
 });

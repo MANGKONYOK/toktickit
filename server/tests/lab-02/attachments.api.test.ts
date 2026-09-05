@@ -95,6 +95,18 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
       expect(res.body.error).toBeDefined();
     });
 
+    it("rejects disguised executable disguised with allowed image/png MIME type with 415 (API-12 / AC-15)", async () => {
+      const buffer = Buffer.from("MZ disguised executable binary content");
+
+      const res = await request(app)
+        .post(`/api/tickets/${testTicket.id}/attachments`)
+        .field("requesterId", requesterSorawit.id)
+        .attach("file", buffer, { filename: "trojan.exe", contentType: "image/png" });
+
+      expect(res.status).toBe(415);
+      expect(res.body.error.code).toBe("UNSUPPORTED_MEDIA_TYPE");
+    });
+
     it("rejects oversized file (>5MB) with 413 Payload Too Large (API-12 / AC-15, BR-09)", async () => {
       // 5MB + 1024 bytes
       const bigBuffer = Buffer.alloc(5 * 1024 * 1024 + 1024, 0);
@@ -270,6 +282,37 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
         });
 
       expect(res.status).toBe(409);
+    });
+
+    it("anti-spoofing: header x-requester-id takes absolute precedence over body requesterId to prevent unauthorized removal", async () => {
+      const att = await prisma.attachment.create({
+        data: {
+          ticketId: testTicket.id,
+          fileName: "sorawit_confidential.png",
+          originalName: "sorawit_confidential.png",
+          mimeType: "image/png",
+          fileSize: 1024,
+          filePath: "dummy_path",
+          uploadedById: requesterSorawit.id,
+        },
+      });
+
+      // Attacker Jane Doe attempts to delete Sorawit's attachment by forging { requesterId: Sorawit } in body
+      const res = await request(app)
+        .delete(`/api/attachments/${att.id}`)
+        .set("x-requester-id", String(requesterJane.id))
+        .send({
+          requesterId: requesterSorawit.id,
+          reason: "Malicious attacker deletion attempt",
+        });
+
+      // Header identity (Jane) must govern the query predicate: attachment not found for Jane -> 404
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
+
+      // Verify attachment was NOT soft-removed
+      const checkDb = await prisma.attachment.findUnique({ where: { id: att.id } });
+      expect(checkDb?.removedAt).toBeNull();
     });
   });
 

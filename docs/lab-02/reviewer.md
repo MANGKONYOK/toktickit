@@ -115,11 +115,20 @@
 #### PR #... (`feature/5-ticket-detail-attachments`)
 - **Reviewer comment I received:**
   ```text
-  ...
+  1. [Issue] Identity on the new routes: app.ts:359, 469, 555, 617, 668 all read req.query.requesterId || req.headers["x-requester-id"], so parameter wins. On DELETE /api/attachments/:id it is destructive — a body of { "requesterId": <owner>, "reason": "..." } soft-removes anyone's attachment.
+  2. [Issue] Type check vs AC-15: upload.ts filters on file.mimetype which the client sends. payload.exe declared image/png is accepted. Check extension against declared type.
+  3. [Warning] Spec vs code: specification.md:259 says filenames are ${uuid}-${originalName} while code uses safe ${Date.now()}-${random}${ext}. Update spec to match code.
+  4. [Warning] correlationId: routes are back to req-${Date.now()} instead of randomUUID().
+  5. [Warning] Ownership shape: app.ts compares requesterId post-fetch rather than applying where predicate on query.
   ```
 - **How I responded:**
   ```text
-  ...
+  Resolved all 5 items:
+  1. Made req.headers["x-requester-id"] the authoritative identity across all 5 routes, overriding query/body parameters and preventing tenant spoofing. Added automated anti-spoofing tests for both GET /api/tickets/:id and DELETE /api/attachments/:id.
+  2. Enhanced Multer fileFilter in upload.ts to validate both file extension (.jpg, .jpeg, .png, .webp, .pdf) and MIME type alignment, rejecting disguised files like trojan.exe with 415 UNSUPPORTED_MEDIA_TYPE.
+  3. Updated docs/lab-02/specification.md section 11 to document the safe server-generated filename scheme without user input in filesystem paths.
+  4. Standardized all routes and error handlers to use crypto.randomUUID() for collision-free correlationId generation.
+  5. Migrated all 5 routes to strict SQL where predicates (where: { id, requesterId }) and relational filtering (ticket: { requesterId }), ensuring non-owned records are never read into memory, preceded by active-requester validation.
   ```
 
 #### PR #... (`feature/6-e2e-responsive-verification`)

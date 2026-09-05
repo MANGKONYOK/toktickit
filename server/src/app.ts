@@ -239,9 +239,9 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
 // Create support ticket with sequential ticketNumber and initial lifecycle state
 // ---------------------------------------------------------------------------
 app.post("/api/tickets", async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
-    // Support requester identity duality (req.body.requesterId || x-requester-id header)
+    // Support requester identity duality with header taking absolute precedence
     const headerRequesterId = req.headers["x-requester-id"]
       ? Number(req.headers["x-requester-id"])
       : undefined;
@@ -250,7 +250,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
       req.body && typeof req.body === "object" && !Array.isArray(req.body)
         ? {
             ...req.body,
-            requesterId: req.body.requesterId ?? headerRequesterId,
+            requesterId: headerRequesterId ?? req.body.requesterId,
           }
         : req.body;
 
@@ -346,20 +346,21 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 // Retrieve complete details and attachments for a single ticket, strictly enforcing ownership (BR-08 / AC-13)
 // ---------------------------------------------------------------------------
 app.get("/api/tickets/:id", async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
     const ticketId = parseInt(req.params.id, 10);
     if (isNaN(ticketId) || ticketId <= 0) {
       res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID" },
+        error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
       });
       return;
     }
 
-    const requesterIdRaw = req.query.requesterId || req.headers["x-requester-id"];
+    // Header identity takes absolute precedence over query parameter
+    const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
     if (!requesterIdRaw) {
       res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "Requester identity is required" },
+        error: { code: "VALIDATION_ERROR", message: "Requester identity is required", correlationId },
       });
       return;
     }
@@ -367,14 +368,28 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
     const requesterId = parseInt(String(requesterIdRaw), 10);
     if (isNaN(requesterId) || requesterId <= 0) {
       res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "Invalid requester ID" },
+        error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId },
       });
       return;
     }
 
     const prisma = getPrisma();
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
+
+    // Verify requester exists and is active before querying ticket
+    const requester = await prisma.requesterUser.findFirst({
+      where: { id: requesterId, isActive: true },
+    });
+    if (!requester) {
+      console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
+      res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+      });
+      return;
+    }
+
+    // Ownership applied directly as a SQL where predicate (BR-08 / AC-03 / AC-13)
+    const ticket = await prisma.ticket.findFirst({
+      where: { id: ticketId, requesterId: requester.id },
       include: {
         requester: {
           select: { id: true, fullName: true, email: true, department: true },
@@ -391,10 +406,9 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
       },
     });
 
-    // Enforce strict cross-requester ownership (BR-08 / AC-03)
-    if (!ticket || ticket.requesterId !== requesterId) {
+    if (!ticket) {
       res.status(404).json({
-        error: { code: "TICKET_NOT_FOUND", message: "Ticket not found" },
+        error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
       });
       return;
     }
@@ -457,37 +471,52 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
 // Upload an attachment to an existing ticket (AC-14..16, BR-09..10)
 // ---------------------------------------------------------------------------
 app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
     const ticketId = parseInt(req.params.id, 10);
     if (isNaN(ticketId) || ticketId <= 0) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId } });
       return;
     }
 
-    const requesterIdRaw = req.body.requesterId || req.headers["x-requester-id"];
+    // Header identity takes absolute precedence over multipart body
+    const requesterIdRaw = req.headers["x-requester-id"] ?? req.body?.requesterId;
     if (!requesterIdRaw) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Requester identity is required" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Requester identity is required", correlationId } });
       return;
     }
 
     const requesterId = parseInt(String(requesterIdRaw), 10);
     if (isNaN(requesterId) || requesterId <= 0) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
       return;
     }
 
     if (!req.file) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Attachment file is required" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Attachment file is required", correlationId } });
       return;
     }
 
     const prisma = getPrisma();
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
+
+    // Verify requester exists and is active before querying ticket
+    const requester = await prisma.requesterUser.findFirst({
+      where: { id: requesterId, isActive: true },
+    });
+    if (!requester) {
+      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+      });
+      return;
+    }
+
+    // Strict ownership applied directly as a SQL where predicate (BR-08)
+    const ticket = await prisma.ticket.findFirst({
+      where: { id: ticketId, requesterId: requester.id },
       include: {
         attachments: {
           where: { removedAt: null },
@@ -495,10 +524,9 @@ app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async 
       },
     });
 
-    // Enforce strict ownership (BR-08)
-    if (!ticket || ticket.requesterId !== requesterId) {
+    if (!ticket) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(404).json({ error: { code: "TICKET_NOT_FOUND", message: "Ticket not found" } });
+      res.status(404).json({ error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId } });
       return;
     }
 
@@ -509,6 +537,7 @@ app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async 
         error: {
           code: "ATTACHMENT_LIMIT_EXCEEDED",
           message: "Maximum 5 active attachments allowed per ticket",
+          correlationId,
         },
       });
       return;
@@ -522,7 +551,7 @@ app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async 
         mimeType: req.file.mimetype,
         fileSize: req.file.size,
         filePath: req.file.path,
-        uploadedById: requesterId,
+        uploadedById: requester.id,
       },
     });
 
@@ -549,26 +578,44 @@ app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async 
 // Retrieve attachment metadata list (active and soft-removed) for a ticket
 // ---------------------------------------------------------------------------
 app.get("/api/tickets/:id/attachments", async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
     const ticketId = parseInt(req.params.id, 10);
-    const requesterIdRaw = req.query.requesterId || req.headers["x-requester-id"];
+    // Header identity takes absolute precedence over query parameter
+    const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
     if (isNaN(ticketId) || !requesterIdRaw) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters", correlationId } });
       return;
     }
     const requesterId = parseInt(String(requesterIdRaw), 10);
+    if (isNaN(requesterId) || requesterId <= 0) {
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
+      return;
+    }
 
     const prisma = getPrisma();
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
+
+    // Verify requester exists and is active before querying ticket
+    const requester = await prisma.requesterUser.findFirst({
+      where: { id: requesterId, isActive: true },
+    });
+    if (!requester) {
+      res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+      });
+      return;
+    }
+
+    // Strict ownership applied directly as a SQL where predicate (BR-08)
+    const ticket = await prisma.ticket.findFirst({
+      where: { id: ticketId, requesterId: requester.id },
       include: {
         attachments: { orderBy: { uploadedAt: "asc" } },
       },
     });
 
-    if (!ticket || ticket.requesterId !== requesterId) {
-      res.status(404).json({ error: { code: "TICKET_NOT_FOUND", message: "Ticket not found" } });
+    if (!ticket) {
+      res.status(404).json({ error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId } });
       return;
     }
 
@@ -611,24 +658,45 @@ app.get("/api/tickets/:id/attachments", async (req: Request, res: Response) => {
 // Download active attachment stream. Rejects soft-removed files with 410 Gone (AC-18, BR-12)
 // ---------------------------------------------------------------------------
 app.get("/api/attachments/:id/download", async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
     const attachmentId = parseInt(req.params.id, 10);
-    const requesterIdRaw = req.query.requesterId || req.headers["x-requester-id"];
+    // Header identity takes absolute precedence over query parameter
+    const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
     if (isNaN(attachmentId) || !requesterIdRaw) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters", correlationId } });
       return;
     }
     const requesterId = parseInt(String(requesterIdRaw), 10);
+    if (isNaN(requesterId) || requesterId <= 0) {
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
+      return;
+    }
 
     const prisma = getPrisma();
-    const attachment = await prisma.attachment.findUnique({
-      where: { id: attachmentId },
+
+    // Verify requester exists and is active before querying attachment
+    const requester = await prisma.requesterUser.findFirst({
+      where: { id: requesterId, isActive: true },
+    });
+    if (!requester) {
+      res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+      });
+      return;
+    }
+
+    // Strict ownership applied directly as a SQL where predicate through relation (BR-08)
+    const attachment = await prisma.attachment.findFirst({
+      where: {
+        id: attachmentId,
+        ticket: { requesterId: requester.id },
+      },
       include: { ticket: true },
     });
 
-    if (!attachment || attachment.ticket.requesterId !== requesterId) {
-      res.status(404).json({ error: { code: "ATTACHMENT_NOT_FOUND", message: "Attachment not found" } });
+    if (!attachment) {
+      res.status(404).json({ error: { code: "ATTACHMENT_NOT_FOUND", message: "Attachment not found", correlationId } });
       return;
     }
 
@@ -638,13 +706,14 @@ app.get("/api/attachments/:id/download", async (req: Request, res: Response) => 
         error: {
           code: "ATTACHMENT_REMOVED",
           message: "This attachment has been removed and cannot be downloaded",
+          correlationId,
         },
       });
       return;
     }
 
     if (!fs.existsSync(attachment.filePath)) {
-      res.status(404).json({ error: { code: "FILE_NOT_FOUND", message: "Attachment file missing from storage" } });
+      res.status(404).json({ error: { code: "FILE_NOT_FOUND", message: "Attachment file missing from storage", correlationId } });
       return;
     }
 
@@ -662,17 +731,22 @@ app.get("/api/attachments/:id/download", async (req: Request, res: Response) => 
 // Soft-remove an active attachment with mandatory reason (AC-17, BR-11)
 // ---------------------------------------------------------------------------
 app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
   try {
     const attachmentId = parseInt(req.params.id, 10);
-    const requesterIdRaw = req.body.requesterId || req.headers["x-requester-id"];
-    const reason = req.body.reason;
+    // Header identity takes absolute precedence over request body to prevent tenant spoofing
+    const requesterIdRaw = req.headers["x-requester-id"] ?? req.body?.requesterId;
+    const reason = req.body?.reason;
 
     if (isNaN(attachmentId) || !requesterIdRaw) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters" } });
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters", correlationId } });
       return;
     }
     const requesterId = parseInt(String(requesterIdRaw), 10);
+    if (isNaN(requesterId) || requesterId <= 0) {
+      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
+      return;
+    }
 
     // Validate removal reason: required string, 5 to 255 chars
     if (!reason || typeof reason !== "string" || reason.trim().length < 5 || reason.trim().length > 255) {
@@ -681,25 +755,41 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
           code: "VALIDATION_ERROR",
           message: "Removal reason must be between 5 and 255 characters",
           fieldErrors: { reason: "Removal reason must be between 5 and 255 characters" },
+          correlationId,
         },
       });
       return;
     }
 
     const prisma = getPrisma();
-    const attachment = await prisma.attachment.findUnique({
-      where: { id: attachmentId },
-      include: { ticket: true },
+
+    // Verify requester exists and is active before querying attachment
+    const requester = await prisma.requesterUser.findFirst({
+      where: { id: requesterId, isActive: true },
+    });
+    if (!requester) {
+      res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+      });
+      return;
+    }
+
+    // Strict ownership applied directly as a SQL where predicate through relation (BR-08)
+    const attachment = await prisma.attachment.findFirst({
+      where: {
+        id: attachmentId,
+        ticket: { requesterId: requester.id },
+      },
     });
 
-    if (!attachment || attachment.ticket.requesterId !== requesterId) {
-      res.status(404).json({ error: { code: "ATTACHMENT_NOT_FOUND", message: "Attachment not found" } });
+    if (!attachment) {
+      res.status(404).json({ error: { code: "ATTACHMENT_NOT_FOUND", message: "Attachment not found", correlationId } });
       return;
     }
 
     if (attachment.removedAt !== null) {
       res.status(409).json({
-        error: { code: "ALREADY_REMOVED", message: "Attachment is already removed" },
+        error: { code: "ALREADY_REMOVED", message: "Attachment is already removed", correlationId },
       });
       return;
     }
@@ -708,7 +798,7 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
       where: { id: attachment.id },
       data: {
         removedAt: new Date(),
-        removedById: requesterId,
+        removedById: requester.id,
         removalReason: reason.trim(),
       },
     });
@@ -733,7 +823,7 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
 // Global Error Handling Middleware (Express error middleware for malformed JSON, Multer & unhandled exceptions)
 // ---------------------------------------------------------------------------
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const correlationId = `req-${Date.now()}`;
+  const correlationId = `req-${randomUUID()}`;
 
   if (err instanceof SyntaxError && "body" in err) {
     console.warn(`[${correlationId}] Malformed JSON payload received:`, err.message);

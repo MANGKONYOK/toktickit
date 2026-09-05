@@ -101,6 +101,18 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
     expect(res.body.ticketNumber).toBeUndefined();
   });
 
+  it("anti-spoofing (AC-03): header x-requester-id takes absolute precedence over query requesterId", async () => {
+    // Attacker authenticated as Jane Doe attempts to spoof Sorawit via query parameter
+    const res = await request(app)
+      .get(`/api/tickets/${testTicket.id}`)
+      .set("x-requester-id", String(requesterJane.id))
+      .query({ requesterId: requesterSorawit.id });
+
+    // Must be rejected as 404 because Jane does not own the ticket, despite ?requesterId=Sorawit
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("TICKET_NOT_FOUND");
+  });
+
   it("returns 404 when ticket ID does not exist", async () => {
     const res = await request(app)
       .get("/api/tickets/9999999")
