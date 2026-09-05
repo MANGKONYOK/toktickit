@@ -63,10 +63,16 @@ describe("CreateTicket Component (UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-
   it("UI-02 / AC-05: displays inline field validation errors when submitting empty / invalid fields", async () => {
     await openCreateTicketTab();
 
+    // Verify read-only requester context header (UI Spec §4.3)
+    expect(screen.getByText(/Filing Support Request As:/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Sorawit Chaithong").length).toBeGreaterThanOrEqual(2);
+
     const submitBtn = screen.getByRole("button", { name: /Submit Ticket/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
+      expect(screen.getByText(/Please select a category/i)).toBeInTheDocument();
+      expect(screen.getByText(/Please select a related system/i)).toBeInTheDocument();
       expect(screen.getByText(/Summary is required/i)).toBeInTheDocument();
       expect(screen.getByText(/Description is required/i)).toBeInTheDocument();
     });
@@ -93,9 +99,13 @@ describe("CreateTicket Component (UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-
 
     await openCreateTicketTab();
 
+    const categorySelect = screen.getByLabelText(/Category/i);
+    const systemSelect = screen.getByLabelText(/Related System/i);
     const summaryInput = screen.getByLabelText(/Summary/i);
     const descInput = screen.getByLabelText(/Description/i);
 
+    fireEvent.change(categorySelect, { target: { value: "2" } });
+    fireEvent.change(systemSelect, { target: { value: "2" } });
     fireEvent.change(summaryInput, {
       target: { value: "Laptop screen flickering intermittently" },
     });
@@ -146,9 +156,13 @@ describe("CreateTicket Component (UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-
 
     await openCreateTicketTab();
 
+    const categorySelect = screen.getByLabelText(/Category/i) as HTMLSelectElement;
+    const systemSelect = screen.getByLabelText(/Related System/i) as HTMLSelectElement;
     const summaryInput = screen.getByLabelText(/Summary/i) as HTMLInputElement;
     const descInput = screen.getByLabelText(/Description/i) as HTMLTextAreaElement;
 
+    fireEvent.change(categorySelect, { target: { value: "1" } });
+    fireEvent.change(systemSelect, { target: { value: "1" } });
     fireEvent.change(summaryInput, {
       target: { value: "Valid Summary for preservation test" },
     });
@@ -168,10 +182,40 @@ describe("CreateTicket Component (UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-
     });
 
     // Verify fields are completely preserved
+    expect(categorySelect.value).toBe("1");
+    expect(systemSelect.value).toBe("1");
     expect(summaryInput.value).toBe("Valid Summary for preservation test");
     expect(descInput.value).toBe(
       "Valid Description text that should not be wiped when API throws an error."
     );
+  });
+
+  it("maps server fieldErrors to inline form errors when server returns field errors", async () => {
+    const serverError = new Error("Validation error") as any;
+    serverError.fieldErrors = [
+      { field: "summary", message: "Server error: summary flagged by security scanner" },
+    ];
+    vi.spyOn(api, "createTicket").mockRejectedValue(serverError);
+
+    await openCreateTicketTab();
+
+    fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText(/Related System/i), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText(/Summary/i), {
+      target: { value: "Valid Summary for test" },
+    });
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: "Valid Description for testing server error mapping." },
+    });
+
+    const submitBtn = screen.getByRole("button", { name: /Submit Ticket/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Server error: summary flagged by security scanner/i)
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows error alert and retry button when reference data loading fails", async () => {

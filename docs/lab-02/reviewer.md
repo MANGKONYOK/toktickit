@@ -58,14 +58,39 @@
   4. Handled requesterId duality via both request body and x-requester-id header to ensure frictionless migration to Lab 3 auth middleware.
   ```
 
-#### PR #... (`feature/3-create-ticket`)
+#### PR #19 (`feature/3-create-ticket`)
 - **Reviewer comment I received:**
   ```text
-  ...
+  Read the diff and ran both suites. Approving — two to fix first.
+  Highlights:
+  - Ticket number is generated inside $transaction, so failed inserts roll the counter back without burning numbers.
+  - isActive: true checked on all 3 references before insert.
+  - Field value preservation verified after failed submit.
+  Feedback to address:
+  1. Fix: Express HTML stack trace on malformed JSON payload (needs error middleware).
+  2. Fix: Update stale test counts in PR body and tests.md (23 server, 12 client).
+  3. Design: Support x-requester-id header duality on server (req.body.requesterId || req.headers["x-requester-id"]).
+  4. Design: Map server fieldErrors directly to inline input error messages in CreateTicket.tsx.
+  5. Design: Dropdown selects should start unselected (-- Select --) so validation requires deliberate choice.
+  6. Design: Add read-only Requester context card in CreateTicket header per UI Spec §4.3.
+  7. Operability: Log correlationId in server console errors.
+  8. Operability: Seed TicketSequence (year: 2026, lastSequence: 0) in seed.ts to eliminate initial concurrent creation race.
+  9. Hygiene: Assert inactive Alexanders row in API-03 negative test.
+  10. Hygiene: Change CRITICAL to URGENT in ui-spec.md to match enum.
   ```
 - **How I responded:**
   ```text
-  ...
+  Resolved all 10 items systematically:
+  1. Added Express error-handling middleware to server/src/app.ts returning 400 MALFORMED_JSON instead of HTML stack traces.
+  2. Updated tests.md and PR description with verified test counts: 23 server tests (7 suites), 12 client tests (3 suites).
+  3. Implemented requesterId header/body duality in POST /api/tickets with automated test coverage.
+  4. Mapped server fieldErrors to inline form errors in CreateTicket.tsx with automated component test.
+  5. Added initial empty placeholder options (-- Select Category --, -- Select Related System --) in CreateTicket.tsx.
+  6. Added read-only Requester context card at the top of CreateTicket form matching UI Spec §4.3.
+  7. Added correlationId to all server warning and error log entries.
+  8. Added TicketSequence seeding for current year in server/prisma/seed.ts.
+  9. Added negative test in API-03 explicitly verifying that inactive Alexanders requester is rejected with 404.
+  10. Changed CRITICAL to URGENT in docs/lab-02/ui-spec.md.
   ```
 
 #### PR #... (`feature/4-my-tickets`)

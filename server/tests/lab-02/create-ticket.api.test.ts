@@ -7,12 +7,16 @@ describe("POST /api/tickets (API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02
   let activeRequesterId: number;
   let activeCategoryId: number;
   let activeSystemId: number;
+  let inactiveRequesterId: number;
 
   beforeAll(async () => {
     const prisma = getPrisma();
     // Fetch seeded active reference data
     const requester = await prisma.requesterUser.findFirst({
       where: { isActive: true },
+    });
+    const inactiveRequester = await prisma.requesterUser.findFirst({
+      where: { isActive: false },
     });
     const category = await prisma.category.findFirst({
       where: { isActive: true },
@@ -21,11 +25,12 @@ describe("POST /api/tickets (API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02
       where: { isActive: true },
     });
 
-    if (!requester || !category || !system) {
+    if (!requester || !category || !system || !inactiveRequester) {
       throw new Error("Seed data missing for create-ticket API test");
     }
 
     activeRequesterId = requester.id;
+    inactiveRequesterId = inactiveRequester.id;
     activeCategoryId = category.id;
     activeSystemId = system.id;
   });
@@ -90,6 +95,34 @@ describe("POST /api/tickets (API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("API-02 / AC-05: returns 400 MALFORMED_JSON instead of Express HTML stack trace when JSON syntax is invalid", async () => {
+    const res = await request(app)
+      .post("/api/tickets")
+      .set("Content-Type", "application/json")
+      .send('{"summary":');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("MALFORMED_JSON");
+    expect(res.body.error).toHaveProperty("correlationId");
+  });
+
+  it("API-01: accepts requesterId from x-requester-id header when omitted from body", async () => {
+    const payloadWithoutBodyRequester = {
+      categoryId: activeCategoryId,
+      relatedSystemId: activeSystemId,
+      summary: "Testing x-requester-id header duality support",
+      description: "Detailed description testing header duality support in API.",
+    };
+
+    const res = await request(app)
+      .post("/api/tickets")
+      .set("x-requester-id", String(activeRequesterId))
+      .send(payloadWithoutBodyRequester);
+
+    expect(res.status).toBe(201);
+    expect(res.body.requesterId).toBe(activeRequesterId);
+  });
+
   it("API-03 / AC-05: rejects non-existent or inactive category/system/requester with 404 Not Found", async () => {
     const payloadWithInvalidFk = {
       requesterId: 999999, // Non-existent
@@ -104,6 +137,21 @@ describe("POST /api/tickets (API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02
 
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty("error");
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("API-03 / AC-05: rejects deliberately inactive requester (Alexanders) with 404 Not Found", async () => {
+    const payloadWithInactiveRequester = {
+      requesterId: inactiveRequesterId,
+      categoryId: activeCategoryId,
+      relatedSystemId: activeSystemId,
+      summary: "Testing inactive requester rejection",
+      description: "Detailed description testing inactive requester rejection.",
+    };
+
+    const res = await request(app).post("/api/tickets").send(payloadWithInactiveRequester);
+
+    expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
 });

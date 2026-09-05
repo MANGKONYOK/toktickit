@@ -117,24 +117,24 @@ npx playwright test
 ### Feature 3 Test Results (Verified)
 ```text
 === Backend Tests (Vitest & Supertest) ===
- ✓ tests/lab-02/validation.test.ts (7 tests) [UNIT-02 / AC-05, BR-05]
  ✓ tests/lab-02/ticket-number.test.ts (2 tests) [UNIT-01 / AC-01, BR-01]
+ ✓ tests/lab-02/validation.test.ts (8 tests) [UNIT-02 / AC-05, BR-05, BR-06]
  ✓ tests/lab-01/health.test.ts (1 test)
  ✓ tests/lab-01/categories.test.ts (1 test)
  ✓ tests/lab-02/requesters.api.test.ts (2 tests) [API-04 / AC-02, BR-04]
  ✓ tests/lab-02/reference-data.api.test.ts (2 tests) [API-05 / AC-04]
- ✓ tests/lab-02/create-ticket.api.test.ts (3 tests) [API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02, BR-05]
+ ✓ tests/lab-02/create-ticket.api.test.ts (7 tests) [API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02, BR-04, BR-05]
 
  Test Files  7 passed (7)
-      Tests  18 passed (18)
+      Tests  23 passed (23)
 
 === Frontend Tests (Vitest & Testing Library) ===
  ✓ tests/lab-01/App.test.tsx (3 tests)
  ✓ tests/lab-02/RequesterSelector.test.tsx (4 tests) [UI-01 / AC-02, BR-03, BR-04]
- ✓ tests/lab-02/CreateTicket.test.tsx (3 tests) [UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-05, BR-06, BR-07, BR-14]
+ ✓ tests/lab-02/CreateTicket.test.tsx (5 tests) [UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-05, BR-06, BR-07, BR-14, UI Spec §4.3]
 
  Test Files  3 passed (3)
-      Tests  10 passed (10)
+      Tests  12 passed (12)
 ```
 
 

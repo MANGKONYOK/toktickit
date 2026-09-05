@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticket-number.js";
@@ -105,15 +105,30 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 // Create support ticket with sequential ticketNumber and initial lifecycle state
 // ---------------------------------------------------------------------------
 app.post("/api/tickets", async (req: Request, res: Response) => {
+  const correlationId = `req-${Date.now()}`;
   try {
-    const validation = validateTicketInput(req.body);
+    // Support requester identity duality (req.body.requesterId || x-requester-id header)
+    const headerRequesterId = req.headers["x-requester-id"]
+      ? Number(req.headers["x-requester-id"])
+      : undefined;
+
+    const payload =
+      req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? {
+            ...req.body,
+            requesterId: req.body.requesterId ?? headerRequesterId,
+          }
+        : req.body;
+
+    const validation = validateTicketInput(payload);
     if (!validation.isValid) {
+      console.warn(`[${correlationId}] POST /api/tickets validation failed:`, validation.errors);
       res.status(400).json({
         error: {
           code: "VALIDATION_ERROR",
           message: "Invalid request parameters or payload",
           fieldErrors: validation.errors,
-          correlationId: `req-${Date.now()}`,
+          correlationId,
         },
       });
       return;
@@ -126,7 +141,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
       requestedPriority = "MEDIUM",
       summary,
       description,
-    } = req.body;
+    } = payload;
 
     const prisma = getPrisma();
 
@@ -144,11 +159,15 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
     ]);
 
     if (!requester || !category || !system) {
+      console.warn(
+        `[${correlationId}] Reference check failed: requester=${Boolean(requester)}, category=${Boolean(category)}, system=${Boolean(system)}`
+      );
       res.status(404).json({
         error: {
           code: "NOT_FOUND",
           message:
             "Specified requester, category, or related system does not exist or is inactive",
+          correlationId,
         },
       });
       return;
@@ -177,15 +196,42 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 
     res.status(201).json(newTicket);
   } catch (error) {
-    console.error("Failed to create ticket:", error);
+    console.error(`[${correlationId}] Failed to create ticket:`, error);
     res.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
         message: "Failed to create ticket due to internal server error",
-        correlationId: `req-${Date.now()}`,
+        correlationId,
       },
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Global Error Handling Middleware (Express error middleware for malformed JSON & unhandled exceptions)
+// ---------------------------------------------------------------------------
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const correlationId = `req-${Date.now()}`;
+  if (err instanceof SyntaxError && "body" in err) {
+    console.warn(`[${correlationId}] Malformed JSON payload received:`, err.message);
+    res.status(400).json({
+      error: {
+        code: "MALFORMED_JSON",
+        message: "Request payload must be valid JSON",
+        correlationId,
+      },
+    });
+    return;
+  }
+
+  console.error(`[${correlationId}] Unhandled server exception:`, err);
+  res.status(500).json({
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "An unexpected server error occurred",
+      correlationId,
+    },
+  });
 });
 
 export default app;

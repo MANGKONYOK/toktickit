@@ -82,6 +82,15 @@ async function main() {
     });
   }
   console.log("Seeded requesters successfully:", REQUESTERS.map((r) => r.fullName));
+
+  // 4. Seed TicketSequence for current year (guarantees race-free concurrent ticket number increments)
+  const currentYear = new Date().getFullYear();
+  await prisma.ticketSequence.upsert({
+    where: { year: currentYear },
+    update: {},
+    create: { year: currentYear, lastSequence: 0 },
+  });
+  console.log(`Seeded ticket sequence for year ${currentYear}`);
 }
 
 main()

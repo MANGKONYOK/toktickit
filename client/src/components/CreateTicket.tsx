@@ -30,7 +30,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
   const [isLoadingReferences, setIsLoadingReferences] = useState<boolean>(true);
   const [referenceError, setReferenceError] = useState<string | null>(null);
 
-  // Form State
+  // Form State - initialized to empty to enforce deliberate user selection
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [relatedSystemId, setRelatedSystemId] = useState<number | "">("");
   const [requestedPriority, setRequestedPriority] = useState<Priority>("MEDIUM");
@@ -60,9 +60,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
         setReferenceError("No active categories or related systems were found. Please verify the system configuration.");
         return;
       }
-
-      if (safeCats.length > 0) setCategoryId(safeCats[0].id);
-      if (safeSystems.length > 0) setRelatedSystemId(safeSystems[0].id);
+      // Note: We deliberately do NOT auto-select the first index so that validation requires conscious selection
     } catch (err: any) {
       setReferenceError(err?.message || "Failed to load ticket categories and related systems.");
     } finally {
@@ -89,6 +87,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
       newErrors.requestedPriority = "Please select a priority level";
     }
 
+    // BR-06: Whitespace trimming before validation
     const trimmedSummary = summary.trim();
     if (!trimmedSummary) {
       newErrors.summary = "Summary is required";
@@ -96,6 +95,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
       newErrors.summary = "Summary must be between 5 and 100 characters";
     }
 
+    // BR-06: Whitespace trimming before validation
     const trimmedDesc = description.trim();
     if (!trimmedDesc) {
       newErrors.description = "Description is required";
@@ -141,6 +141,14 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
       setServerError(null);
     } catch (err: any) {
       setServerError(err.message || "Failed to create ticket. Please check your connection and try again.");
+      // Map server fieldErrors directly to form inline error indicators
+      if (err.fieldErrors && Array.isArray(err.fieldErrors)) {
+        const serverFieldErrors: FormErrors = {};
+        err.fieldErrors.forEach((fe: { field: string; message: string }) => {
+          serverFieldErrors[fe.field as keyof FormErrors] = fe.message;
+        });
+        setErrors((prev) => ({ ...prev, ...serverFieldErrors }));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -153,11 +161,11 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
     setSummary("");
     setDescription("");
     setRequestedPriority("MEDIUM");
-    if (categories.length > 0) setCategoryId(categories[0].id);
-    if (relatedSystems.length > 0) setRelatedSystemId(relatedSystems[0].id);
+    setCategoryId("");
+    setRelatedSystemId("");
   };
 
-  // Success Confirmation View (BR-08)
+  // Success Confirmation View (AC-01 / FR-04)
   if (createdTicket) {
     return (
       <div className="zen-card p-4 p-md-5 mb-4 text-center">
@@ -239,6 +247,21 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
         <p className="text-muted small">
           Submit an IT support request. Fields marked with <span className="text-danger">*</span> are mandatory.
         </p>
+
+        {/* Read-Only Current Requester Context Card (UI Spec §4.3) */}
+        {currentRequester && (
+          <div
+            className="p-3 mt-3 rounded border d-flex justify-content-between align-items-center"
+            style={{ backgroundColor: "var(--color-bg-page)" }}
+          >
+            <div>
+              <span className="text-muted small d-block">Filing Support Request As:</span>
+              <strong className="text-dark">{currentRequester.fullName}</strong>
+              <span className="badge bg-secondary ms-2">{currentRequester.department}</span>
+            </div>
+            <span className="small text-muted">{currentRequester.email}</span>
+          </div>
+        )}
       </div>
 
       {referenceError && (
@@ -296,12 +319,13 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
               className={`form-select ${errors.categoryId ? "is-invalid" : ""}`}
               value={categoryId}
               onChange={(e) => {
-                setCategoryId(Number(e.target.value));
+                setCategoryId(e.target.value ? Number(e.target.value) : "");
                 if (errors.categoryId) setErrors({ ...errors, categoryId: undefined });
               }}
               disabled={isLoadingReferences || isSubmitting || !!referenceError}
               required
             >
+              <option value="">-- Select Category --</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -323,12 +347,13 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
               className={`form-select ${errors.relatedSystemId ? "is-invalid" : ""}`}
               value={relatedSystemId}
               onChange={(e) => {
-                setRelatedSystemId(Number(e.target.value));
+                setRelatedSystemId(e.target.value ? Number(e.target.value) : "");
                 if (errors.relatedSystemId) setErrors({ ...errors, relatedSystemId: undefined });
               }}
               disabled={isLoadingReferences || isSubmitting || !!referenceError}
               required
             >
+              <option value="">-- Select Related System --</option>
               {relatedSystems.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
