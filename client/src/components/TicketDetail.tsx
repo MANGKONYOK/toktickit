@@ -102,7 +102,7 @@ export default function TicketDetail({ ticketId, onBack }: TicketDetailProps) {
   }
 
   return (
-    <div data-testid="ticket-detail-container" className="my-2">
+    <div data-testid="ticket-detail-view" className="my-2">
       {/* Navigation & Header */}
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <button
@@ -121,8 +121,8 @@ export default function TicketDetail({ ticketId, onBack }: TicketDetailProps) {
 
       {/* Main Read-Only Surface with Zen Green #F0F4F1 background */}
       <div
-        className="zen-card p-4 border"
-        style={{ backgroundColor: "var(--color-bg-page, #F0F4F1)" }}
+        className="zen-card p-4 border zen-readonly-surface"
+        style={{ backgroundColor: "var(--color-readonly-bg, #f0f4f1)" }}
         data-testid="ticket-detail-card"
       >
         {/* Title & Number */}

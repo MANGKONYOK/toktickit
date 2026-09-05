@@ -168,7 +168,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
   // Success Confirmation View (AC-01 / FR-04)
   if (createdTicket) {
     return (
-      <div className="zen-card p-4 p-md-5 mb-4 text-center">
+      <div className="zen-card p-4 p-md-5 mb-4 text-center" data-testid="create-ticket-success">
         <div
           className="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle"
           style={{
@@ -200,7 +200,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
         >
           <div className="d-flex justify-content-between mb-2">
             <span className="text-muted small">Ticket Number:</span>
-            <strong className="text-success fs-5">{createdTicket.ticketNumber}</strong>
+            <strong className="text-success fs-5" data-testid="created-ticket-number">{createdTicket.ticketNumber}</strong>
           </div>
           <div className="d-flex justify-content-between mb-2">
             <span className="text-muted small">Status:</span>
@@ -221,7 +221,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
         <div className="d-flex justify-content-center gap-3">
           <button
             type="button"
-            className="btn btn-zen-secondary px-4"
+            className="btn btn-zen-secondary touch-target px-4"
             onClick={handleResetForm}
           >
             + Create Another Ticket
@@ -229,7 +229,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
           {onNavigateToMyTickets && (
             <button
               type="button"
-              className="btn btn-zen-primary px-4"
+              className="btn btn-zen-primary touch-target px-4"
               onClick={onNavigateToMyTickets}
             >
               View My Tickets &rarr;
@@ -292,7 +292,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
       )}
 
       {serverError && (
-        <div className="alert alert-danger mb-4 d-flex align-items-center" role="alert">
+        <div className="alert alert-danger mb-4 d-flex align-items-center" role="alert" data-testid="create-ticket-error">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -454,7 +454,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
         <div className="d-flex justify-content-end gap-2">
           <button
             type="button"
-            className="btn btn-outline-secondary px-3"
+            className="btn btn-outline-secondary touch-target px-3"
             onClick={handleResetForm}
             disabled={isSubmitting}
           >
@@ -462,7 +462,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
           </button>
           <button
             type="submit"
-            className="btn btn-zen-primary px-4 d-flex align-items-center"
+            className="btn btn-zen-primary touch-target px-4 d-flex align-items-center"
             disabled={isSubmitting || !!referenceError}
           >
             {isSubmitting ? (

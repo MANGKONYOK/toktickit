@@ -1,0 +1,24 @@
+{
+  "name": "toktickit",
+  "version": "1.0.0",
+  "description": "TokTickIT is an IT service desk web application built to manage Account and Access, Hardware, Software, and Network requests. This repository contains the Sprint 1 full-stack vertical slice demonstrating integration between the React UI, Express REST API, Prisma ORM, and PostgreSQL database.",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MANGKONYOK/toktickit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MANGKONYOK/toktickit/issues"
+  },
+  "homepage": "https://github.com/MANGKONYOK/toktickit#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.4.1"
+  }
+}

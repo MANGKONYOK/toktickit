@@ -28,9 +28,10 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
             <span>TokTickIT</span>
           </div>
 
-          <nav className="d-none d-md-flex align-items-center gap-2">
+          <nav className="d-flex align-items-center gap-2">
             <button
               type="button"
+              data-testid="nav-my-tickets"
               className={`btn btn-link zen-nav-tab border-0 ${activeTab === "my-tickets" ? "active" : ""}`}
               onClick={() => onSelectTab("my-tickets")}
             >
@@ -50,6 +51,7 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
 
             <button
               type="button"
+              data-testid="nav-create-ticket"
               className={`btn btn-link zen-nav-tab border-0 ${activeTab === "create-ticket" ? "active" : ""}`}
               onClick={() => onSelectTab("create-ticket")}
             >
@@ -89,6 +91,7 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
 
               <button
                 type="button"
+                data-testid="nav-change-requester"
                 className="btn btn-sm btn-zen-outline-light"
                 onClick={openSelector}
                 title="Switch Development Requester"

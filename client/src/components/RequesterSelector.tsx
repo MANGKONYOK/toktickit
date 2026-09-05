@@ -178,7 +178,8 @@ export default function RequesterSelector() {
                   )}
                   <button
                     type="submit"
-                    className="btn btn-zen-primary px-4"
+                    data-testid="continue-requester-btn"
+                    className="btn btn-zen-primary touch-target px-4"
                     disabled={selectedId === "" || safeList.length === 0}
                   >
                     Continue &rarr;

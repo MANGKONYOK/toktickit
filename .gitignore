@@ -146,3 +146,7 @@ vite.config.ts.timestamp-*
 uploads/
 server/uploads/
 
+# E2E test results and temp scratch files
+test-results/
+scratch/
+
