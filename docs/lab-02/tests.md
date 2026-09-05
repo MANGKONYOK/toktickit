@@ -26,20 +26,20 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 | **API-06** | API | AC-07, AC-08 | Query tickets with search, category/priority/status filters | `200 OK`; returns filtered subset with pagination meta | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
 | **API-07** | API | AC-09, AC-10 | Query tickets with custom sorting and pagination | `200 OK`; returns ordered results with correct page/limit | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
 | **API-08** | API | AC-03, FR-06 | Multi-user isolation: query tickets of another requester | `200 OK`; only tickets owned by query requesterId returned | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
-| **API-09** | API | AC-13, FR-10 | Retrieve owned ticket detail with attachments | `200 OK`; returns ticket header and attachment list | `server/tests/lab-02/ticket-detail.api.test.ts` | Planned |
-| **API-10** | API | AC-03, FR-06 | Unauthorized access: get ticket of another requester | `404 Not Found`; resource not leaked to other users | `server/tests/lab-02/ticket-detail.api.test.ts` | Planned |
-| **API-11** | API | AC-14, FR-11 | Upload valid attachment ($\le 5\text{MB}$, JPG/PNG/PDF) | `201 Created`; attachment stored and metadata returned | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| **API-12** | API | AC-15, BR-09 | Reject oversized attachment (>5MB) or invalid MIME | `413 Payload Too Large` / `415 Unsupported Media` | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| **API-13** | API | AC-16, BR-10 | Reject 6th active attachment upload | `409 Conflict`; maximum 5 active limit reached | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| **API-14** | API | AC-17, BR-11 | Soft-remove attachment with valid reason | `200 OK`; `removedAt` set, metadata retained | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| **API-15** | API | AC-18, BR-12 | Block download for soft-removed attachment | `404 Not Found` / `410 Gone`; download rejected | `server/tests/lab-02/attachments.api.test.ts` | Planned |
+| **API-09** | API | AC-13, FR-10 | Retrieve owned ticket detail with attachments | `200 OK`; returns ticket header and attachment list | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
+| **API-10** | API | AC-03, FR-06 | Unauthorized access: get ticket of another requester | `404 Not Found`; resource not leaked to other users | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
+| **API-11** | API | AC-14, FR-11 | Upload valid attachment ($\le 5\text{MB}$, JPG/PNG/PDF) | `201 Created`; attachment stored and metadata returned | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
+| **API-12** | API | AC-15, BR-09 | Reject oversized attachment (>5MB) or invalid MIME | `413 Payload Too Large` / `415 Unsupported Media` | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
+| **API-13** | API | AC-16, BR-10 | Reject 6th active attachment upload | `409 Conflict`; maximum 5 active limit reached | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
+| **API-14** | API | AC-17, BR-11 | Soft-remove attachment with valid reason | `200 OK`; `removedAt` set, metadata retained | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
+| **API-15** | API | AC-18, BR-12 | Block download for soft-removed attachment | `404 Not Found` / `410 Gone`; download rejected | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **UI-01** | UI | AC-02, FR-01 | Render Requester Selector when no context selected | Selector dropdown displayed with active users | `client/tests/lab-02/RequesterSelector.test.tsx` | **PASS** |
 | **UI-02** | UI | AC-05, BR-05 | Show inline field validation errors on empty submit | Red error messages displayed below invalid inputs | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-03** | UI | AC-01, BR-14 | Submit button displays busy state during async call | Button disabled with loading spinner | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-04** | UI | AC-06, BR-07 | Preserve form field values when API submission fails | Inputs retained, error notification shown | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-05** | UI | AC-11, FR-09 | Display empty state vs no-results search filter state | Distinct empty state callouts rendered | `client/tests/lab-02/MyTickets.test.tsx` | Planned |
-| **UI-06** | UI | AC-13, FR-10 | Ticket detail renders all header fields as read-only | Shaded background `#F0F4F1`, inputs non-editable | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Planned |
-| **UI-07** | UI | AC-17, BR-11 | Soft removal modal prompts for removal reason | Reason textarea required before confirm enabled | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
+| **UI-06** | UI | AC-13, FR-10 | Ticket detail renders all header fields as read-only | Shaded background `#F0F4F1`, inputs non-editable | `client/tests/lab-02/TicketDetail.test.tsx` | **PASS** |
+| **UI-07** | UI | AC-17, BR-11 | Soft removal modal prompts for removal reason | Reason textarea required before confirm enabled | `client/tests/lab-02/AttachmentSection.test.tsx` | **PASS** |
 | **STYLE-01**| Style | AC-13, NFR-02 | Assert Zen Green color tokens and read-only styling | `#006B3C`, `#0B7A46`, `#F0F4F1` applied correctly | `client/tests/lab-02/ZenGreenStyle.test.tsx` | Planned |
 | **RESP-01** | Responsive | NFR-01 | Multi-viewport responsive checks (Desktop, Tablet, Mobile) | Form stacks vertically on mobile, zero overflow-x | `client/tests/lab-02/ResponsiveLayout.test.tsx` | Planned |
 | **E2E-01** | E2E | AC-01..18 | Full Requester journey: create, list, filter, detail, attachments | All actions complete across Desktop/Tablet/Mobile | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |

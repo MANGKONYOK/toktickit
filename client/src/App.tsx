@@ -5,12 +5,14 @@ import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
 import Navbar from "./components/Navbar.js";
 import RequesterSelector from "./components/RequesterSelector.js";
 import CreateTicket from "./components/CreateTicket.js";
+import TicketDetail from "./components/TicketDetail.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
 function MainContent() {
   const { currentRequester } = useRequester();
   const [activeTab, setActiveTab] = useState<"my-tickets" | "create-ticket">("my-tickets");
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
   // Preserved Lab 1 capability for system status check and regression test suite
   const [state, setState] = useState<UiState>("idle");
@@ -32,7 +34,13 @@ function MainContent() {
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "var(--color-bg-page)" }}>
-      <Navbar activeTab={activeTab} onSelectTab={setActiveTab} />
+      <Navbar
+        activeTab={activeTab}
+        onSelectTab={(tab) => {
+          setSelectedTicketId(null);
+          setActiveTab(tab);
+        }}
+      />
       <RequesterSelector />
 
       <main className="container flex-grow-1 pb-5" style={{ maxWidth: 1200 }}>
@@ -53,7 +61,9 @@ function MainContent() {
           </div>
         )}
 
-        {activeTab === "create-ticket" ? (
+        {selectedTicketId !== null ? (
+          <TicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
+        ) : activeTab === "create-ticket" ? (
           <CreateTicket onNavigateToMyTickets={() => setActiveTab("my-tickets")} />
         ) : (
           <div className="zen-card p-4 mb-4">
