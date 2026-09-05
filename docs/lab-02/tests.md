@@ -28,11 +28,12 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 | **API-08** | API | AC-03, FR-06 | Multi-user isolation: query tickets of another requester | `200 OK`; only tickets owned by query requesterId returned | `server/tests/lab-02/my-tickets.api.test.ts` | **PASS** |
 | **API-09** | API | AC-13, FR-10 | Retrieve owned ticket detail with attachments | `200 OK`; returns ticket header and attachment list | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
 | **API-10** | API | AC-03, FR-06 | Unauthorized access: get ticket of another requester | `404 Not Found`; resource not leaked to other users | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
-| **API-11** | API | AC-14, FR-11 | Upload valid attachment ($\le 5\text{MB}$, JPG/PNG/PDF) | `201 Created`; attachment stored and metadata returned | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
-| **API-12** | API | AC-15, BR-09 | Reject oversized attachment (>5MB) or invalid MIME | `413 Payload Too Large` / `415 Unsupported Media` | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
+| **API-12** | API | AC-15, BR-09 | Reject oversized attachment (>5MB) or invalid MIME/extension mismatch | `413 Payload Too Large` / `415 Unsupported Media` | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **API-13** | API | AC-16, BR-10 | Reject 6th active attachment upload | `409 Conflict`; maximum 5 active limit reached | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **API-14** | API | AC-17, BR-11 | Soft-remove attachment with valid reason | `200 OK`; `removedAt` set, metadata retained | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **API-15** | API | AC-18, BR-12 | Block download for soft-removed attachment | `404 Not Found` / `410 Gone`; download rejected | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
+| **API-16** | API | AC-03, FR-06 | Header identity anti-spoofing on list & detail routes | Headers override body/query parameters; 404 on unowned resource | `server/tests/lab-02/my-tickets.api.test.ts` | **PASS** |
+| **API-17** | API | AC-03, BR-11 | Header identity anti-spoofing on attachment soft-removal | Rejects attempt to remove another user's attachment via body spoofing | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **UI-01** | UI | AC-02, FR-01 | Render Requester Selector when no context selected | Selector dropdown displayed with active users | `client/tests/lab-02/RequesterSelector.test.tsx` | **PASS** |
 | **UI-02** | UI | AC-05, BR-05 | Show inline field validation errors on empty submit | Red error messages displayed below invalid inputs | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-03** | UI | AC-01, BR-14 | Submit button displays busy state during async call | Button disabled with loading spinner | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |

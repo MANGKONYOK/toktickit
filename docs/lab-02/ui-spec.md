@@ -38,6 +38,7 @@
 | - Card-based ticket representation instead of wide data tables                    |
 | - Touch-friendly hit targets (min height 44px for buttons, inputs, selects)       |
 | - Zero horizontal page scrolling (overflow-x: hidden on viewport container)       |
+| - Mobile Header: Flex-wrap navbar with no-wrap tabs and compact user badge       |
 +-----------------------------------------------------------------------------------+
 ```
 

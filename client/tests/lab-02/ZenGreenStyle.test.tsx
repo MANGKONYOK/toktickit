@@ -117,6 +117,13 @@ describe("Zen Green Design System Conformance (STYLE-01 / AC-13, NFR-02, UI Spec
   });
 
   it("STYLE-01.4: asserts primary and secondary buttons follow Zen Green hierarchy with touch targets >= 44px", async () => {
+    // Assert CSS specification rule enforces min-height >= 44px for touch targets
+    const cssPath = fs.existsSync("src/index.css")
+      ? "src/index.css"
+      : path.resolve(process.cwd(), "client/src/index.css");
+    const cssContent = fs.readFileSync(cssPath, "utf-8");
+    expect(cssContent).toMatch(/\.touch-target\s*\{[^}]*min-height:\s*44px/i);
+
     render(
       <RequesterProvider>
         <CreateTicket />
