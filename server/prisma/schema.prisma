@@ -78,8 +78,27 @@ model Ticket {
   requester     RequesterUser @relation(fields: [requesterId], references: [id])
   category      Category      @relation(fields: [categoryId], references: [id])
   relatedSystem RelatedSystem @relation(fields: [relatedSystemId], references: [id])
+  attachments   Attachment[]
 
   @@index([requesterId])
   @@index([createdAt(sort: Desc)])
   @@index([categoryId])
+}
+
+model Attachment {
+  id             Int       @id @default(autoincrement())
+  ticketId       Int
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName       String
+  originalName   String
+  mimeType       String
+  fileSize       Int
+  filePath       String
+  uploadedById   Int
+  uploadedAt     DateTime  @default(now())
+  removedAt      DateTime?
+  removedById    Int?
+  removalReason  String?
+
+  @@index([ticketId])
 }

@@ -57,6 +57,49 @@ export interface SystemStatus {
   categories: Category[];
 }
 
+export interface TicketQueryParams {
+  requesterId?: number;
+  search?: string;
+  categoryId?: number;
+  requestedPriority?: Priority;
+  itPriority?: Priority;
+  status?: TicketStatus;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedTicketsResponse {
+  tickets: Ticket[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface Attachment {
+  id: number;
+  ticketId: number;
+  fileName: string;
+  originalName?: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+  removedAt?: string | null;
+  removedById?: number | null;
+  removalReason?: string | null;
+  isRemoved?: boolean;
+}
+
+export interface TicketDetailResponse extends Ticket {
+  requester?: RequesterUser;
+  attachments?: Attachment[];
+  removedAttachments?: Attachment[];
+}
+
 export async function checkSystem(): Promise<SystemStatus> {
   const healthRes = await fetch(`${API_URL}/api/health`);
   if (!healthRes.ok) {
@@ -129,29 +172,6 @@ export async function createTicket(payload: CreateTicketPayload): Promise<Ticket
   return res.json();
 }
 
-export interface TicketQueryParams {
-  requesterId?: number;
-  search?: string;
-  categoryId?: number;
-  requestedPriority?: Priority;
-  itPriority?: Priority;
-  status?: TicketStatus;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  page?: number;
-  limit?: number;
-}
-
-export interface PaginatedTicketsResponse {
-  tickets: Ticket[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
 export async function fetchMyTickets(
   params: TicketQueryParams
 ): Promise<PaginatedTicketsResponse> {
@@ -202,4 +222,73 @@ export async function fetchMyTickets(
   }
 
   return res.json();
-}
+}
+
+export async function fetchTicketDetail(ticketId: number, requesterId: number): Promise<TicketDetailResponse> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}?requesterId=${requesterId}`, {
+    headers: {
+      "x-requester-id": String(requesterId),
+    },
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(errorData.error?.message || `Failed to fetch ticket detail (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function uploadAttachment(
+  ticketId: number,
+  file: File,
+  requesterId: number
+): Promise<Attachment> {
+  const formData = new FormData();
+  formData.append("requesterId", String(requesterId));
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/attachments`, {
+    method: "POST",
+    headers: {
+      "x-requester-id": String(requesterId),
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(errorData.error?.message || `Attachment upload failed (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function softRemoveAttachment(
+  attachmentId: number,
+  reason: string,
+  requesterId: number
+): Promise<{ id: number; isRemoved: boolean; removalReason: string }> {
+  const res = await fetch(`${API_URL}/api/attachments/${attachmentId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "x-requester-id": String(requesterId),
+    },
+    body: JSON.stringify({ requesterId, reason }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(errorData.error?.message || `Failed to remove attachment (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+export function getAttachmentDownloadUrl(attachmentId: number, requesterId: number): string {
+  return `${API_URL}/api/attachments/${attachmentId}/download?requesterId=${requesterId}`;
+}

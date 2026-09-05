@@ -54,7 +54,7 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     await prisma.ticket.deleteMany({
       where: {
         OR: [
-          { ticketNumber: { startsWith: "TKT-2026-9" } },
+          { ticketNumber: { startsWith: "TKT-2026-900" } },
           { requesterId: { in: [userAId, userBId] } },
         ],
       },
