@@ -38,6 +38,7 @@
 | - Card-based ticket representation instead of wide data tables                    |
 | - Touch-friendly hit targets (min height 44px for buttons, inputs, selects)       |
 | - Zero horizontal page scrolling (overflow-x: hidden on viewport container)       |
+| - Mobile Header: Flex-wrap navbar with no-wrap tabs and compact user badge       |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -118,16 +119,16 @@
 
 | Check Item | Acceptance Criteria | Verified |
 | :--- | :--- | :---: |
-| **Color Fidelity** | Primary `#006B3C`, Secondary `#0B7A46`, Pale `#EAF6EF` used accurately across views | [ ] |
-| **Read-Only Distinction** | Read-only fields clearly shaded with `#F0F4F1` and distinct from editable inputs | [ ] |
-| **Validation Placement** | Field error messages appear immediately below their respective inputs in `#C5221F` | [ ] |
-| **Required Markers** | All required fields display red asterisk `*` | [ ] |
-| **Button Hierarchy** | Primary, Secondary, Destructive, and Disabled states are visually distinct | [ ] |
-| **Busy State** | Submit and Upload buttons show spinner and disable interactions during API calls | [ ] |
-| **Desktop Layout** | Clean multi-column grid centered up to 1200px width on $\ge 992\text{px}$ viewports | [ ] |
-| **Tablet Layout** | Responsive 2-column layout without overlapping elements on $768\text{px}-991\text{px}$ | [ ] |
-| **Mobile Layout** | Single-column stacked layout, card views, $\ge 44\text{px}$ touch targets on $< 768\text{px}$ | [ ] |
-| **Zero Overflow** | No unintended horizontal scrollbars at any screen width | [ ] |
+| **Color Fidelity** | Primary `#006B3C`, Secondary `#0B7A46`, Pale `#EAF6EF` used accurately across views | [x] |
+| **Read-Only Distinction** | Read-only fields clearly shaded with `#F0F4F1` and distinct from editable inputs | [x] |
+| **Validation Placement** | Field error messages appear immediately below their respective inputs in `#C5221F` | [x] |
+| **Required Markers** | All required fields display red asterisk `*` | [x] |
+| **Button Hierarchy** | Primary, Secondary, Destructive, and Disabled states are visually distinct | [x] |
+| **Busy State** | Submit and Upload buttons show spinner and disable interactions during API calls | [x] |
+| **Desktop Layout** | Clean multi-column grid centered up to 1200px width on $\ge 992\text{px}$ viewports | [x] |
+| **Tablet Layout** | Responsive 2-column layout without overlapping elements on $768\text{px}-991\text{px}$ | [x] |
+| **Mobile Layout** | Single-column stacked layout, card views, $\ge 44\text{px}$ touch targets on $< 768\text{px}$ | [x] |
+| **Zero Overflow** | No unintended horizontal scrollbars at any screen width | [x] |
 
 ---
 

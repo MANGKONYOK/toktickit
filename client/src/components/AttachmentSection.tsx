@@ -247,6 +247,7 @@ export default function AttachmentSection({
       {/* Soft-Removal Accessible Modal */}
       {targetAttachment && (
         <div
+          data-testid="removal-modal"
           className="modal d-block"
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           role="dialog"

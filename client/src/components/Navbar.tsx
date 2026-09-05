@@ -11,9 +11,9 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
 
   return (
     <header className="zen-header py-2 px-3 mb-4">
-      <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between">
+      <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2">
         {/* Brand and Navigation */}
-        <div className="d-flex align-items-center gap-4">
+        <div className="d-flex align-items-center gap-3 gap-md-4 flex-wrap">
           <div className="d-flex align-items-center gap-2 text-white fw-bold fs-5">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -28,10 +28,11 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
             <span>TokTickIT</span>
           </div>
 
-          <nav className="d-none d-md-flex align-items-center gap-2">
+          <nav className="d-flex align-items-center gap-1 gap-md-2">
             <button
               type="button"
-              className={`btn btn-link zen-nav-tab border-0 ${activeTab === "my-tickets" ? "active" : ""}`}
+              data-testid="nav-my-tickets"
+              className={`btn btn-link zen-nav-tab border-0 text-nowrap ${activeTab === "my-tickets" ? "active" : ""}`}
               onClick={() => onSelectTab("my-tickets")}
             >
               <svg
@@ -50,7 +51,8 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
 
             <button
               type="button"
-              className={`btn btn-link zen-nav-tab border-0 ${activeTab === "create-ticket" ? "active" : ""}`}
+              data-testid="nav-create-ticket"
+              className={`btn btn-link zen-nav-tab border-0 text-nowrap ${activeTab === "create-ticket" ? "active" : ""}`}
               onClick={() => onSelectTab("create-ticket")}
             >
               <svg
@@ -69,10 +71,10 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
         </div>
 
         {/* User Identity & Switcher */}
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-2">
           {currentRequester ? (
             <div className="d-flex align-items-center gap-2">
-              <div className="zen-badge-user d-flex align-items-center gap-2">
+              <div className="zen-badge-user d-flex align-items-center gap-2 text-nowrap">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -84,22 +86,23 @@ export default function Navbar({ activeTab, onSelectTab }: NavbarProps) {
                   <path fillRule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1" />
                 </svg>
                 <span className="fw-semibold">{currentRequester.fullName}</span>
-                <span className="opacity-75">({currentRequester.department})</span>
+                <span className="opacity-75 d-none d-sm-inline">({currentRequester.department})</span>
               </div>
 
               <button
                 type="button"
-                className="btn btn-sm btn-zen-outline-light"
+                data-testid="nav-change-requester"
+                className="btn btn-sm btn-zen-outline-light text-nowrap"
                 onClick={openSelector}
                 title="Switch Development Requester"
               >
-                Change Requester
+                Change<span className="d-none d-sm-inline"> Requester</span>
               </button>
             </div>
           ) : (
             <button
               type="button"
-              className="btn btn-sm btn-light fw-bold"
+              className="btn btn-sm btn-light fw-bold text-nowrap"
               onClick={openSelector}
             >
               Select Requester
