@@ -5,11 +5,12 @@ import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
 import Navbar from "./components/Navbar.js";
 import RequesterSelector from "./components/RequesterSelector.js";
 import CreateTicket from "./components/CreateTicket.js";
+import MyTickets from "./components/MyTickets.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
 function MainContent() {
-  const { currentRequester } = useRequester();
+  const { currentRequester, isSelectorOpen } = useRequester();
   const [activeTab, setActiveTab] = useState<"my-tickets" | "create-ticket">("my-tickets");
 
   // Preserved Lab 1 capability for system status check and regression test suite
@@ -53,35 +54,29 @@ function MainContent() {
           </div>
         )}
 
-        {activeTab === "create-ticket" ? (
-          <CreateTicket onNavigateToMyTickets={() => setActiveTab("my-tickets")} />
-        ) : (
-          <div className="zen-card p-4 mb-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <h1 className="h3 mb-1 text-dark">
-                  <span style={{ color: "var(--color-primary)" }}>IT Service Desk</span>
-                </h1>
-                <p className="text-muted small mb-0">System dashboard and diagnostic portal</p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-zen-primary"
-                onClick={() => setActiveTab("create-ticket")}
-              >
-                + Create Support Ticket
-              </button>
-            </div>
+        {currentRequester && !isSelectorOpen && (
+          activeTab === "create-ticket" ? (
+            <CreateTicket onNavigateToMyTickets={() => setActiveTab("my-tickets")} />
+          ) : (
+            <MyTickets onNavigateToCreateTicket={() => setActiveTab("create-ticket")} />
+          )
+        )}
 
-            <div className="mb-4">
-              <button
-                className="btn btn-outline-success"
-                onClick={handleCheck}
-                disabled={state === "loading"}
-              >
-                {state === "loading" ? "Loading…" : "Check System Diagnostics"}
-              </button>
-            </div>
+        {/* Preserved Lab 1 System Diagnostics Section for Regression Verification */}
+        <div className="zen-card p-4 mt-4 mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h2 className="h5 mb-1 text-dark">System Diagnostics</h2>
+                  <p className="text-muted small mb-0">Core API connectivity and reference data health</p>
+                </div>
+                <button
+                  className="btn btn-outline-success touch-target px-3"
+                  onClick={handleCheck}
+                  disabled={state === "loading"}
+                >
+                  {state === "loading" ? "Loading…" : "Check System Diagnostics"}
+                </button>
+              </div>
 
             {state === "success" && (
               <div className="mt-4">
@@ -114,7 +109,6 @@ function MainContent() {
               </div>
             )}
           </div>
-        )}
       </main>
     </div>
   );
