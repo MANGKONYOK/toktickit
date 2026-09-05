@@ -59,7 +59,7 @@
 
 ### 3.3. Badges & Status Indicators
 - **Requested Priority:**
-  - `CRITICAL`: Crimson background `#FEE2E2`, text `#991B1B`
+  - `URGENT`: Crimson background `#FEE2E2`, text `#991B1B`
   - `HIGH`: Orange background `#FFEDD5`, text `#C2410C`
   - `MEDIUM`: Amber background `#FEF3C7`, text `#B45309`
   - `LOW`: Slate/Gray background `#F1F5F9`, text `#475569`
@@ -87,7 +87,7 @@
 ### 4.3. Create Ticket Screen
 - **Read-only Header:** Ticket Date (current timestamp) and Requester Name in `#F0F4F1`.
 - **Classification Section:** Category dropdown (Account and Access, Hardware, Software, Network) and Related System dropdown (7 options) in a responsive grid.
-- **Priority Selector:** Radio group or dropdown for Requested Priority (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
+- **Priority Selector:** Radio group or dropdown for Requested Priority (`LOW`, `MEDIUM`, `HIGH`, `URGENT`).
 - **Ticket Summary:** Single-line text input (5-100 chars) with character counter.
 - **Description:** Multiline textarea (10-2000 chars).
 - **Attachments:** File dropzone accepting JPG, PNG, WEBP, PDF up to 5MB (max 5 active).

@@ -16,11 +16,11 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **UNIT-01** | Unit | AC-01, BR-01 | Ticket Number format and sequential generation | Returns format `TKT-YYYY-NNNNNN` with 6-digit sequence | `server/tests/lab-02/ticket-number.test.ts` | Planned |
-| **UNIT-02** | Unit | AC-05, BR-05 | Input validation helper (Summary & Description lengths) | Rejects strings outside 5-100 and 10-2000 bounds | `server/tests/lab-02/validation.test.ts` | Planned |
-| **API-01** | API | AC-01, FR-04 | Create valid ticket with required fields | `201 Created`; ticket created with format `TKT-YYYY-NNNNNN` | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
-| **API-02** | API | AC-05, BR-05 | Reject ticket creation with missing/invalid summary | `400 Bad Request` with field validation details | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
-| **API-03** | API | AC-05, BR-05 | Reject ticket creation with invalid category/system | `404 Not Found` for invalid reference foreign key | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
+| **UNIT-01** | Unit | AC-01, BR-01 | Ticket Number format and sequential generation | Returns format `TKT-YYYY-NNNNNN` with 6-digit sequence | `server/tests/lab-02/ticket-number.test.ts` | **PASS** |
+| **UNIT-02** | Unit | AC-05, BR-05 | Input validation helper (Summary & Description lengths) | Rejects strings outside 5-100 and 10-2000 bounds | `server/tests/lab-02/validation.test.ts` | **PASS** |
+| **API-01** | API | AC-01, FR-04 | Create valid ticket with required fields | `201 Created`; ticket created with format `TKT-YYYY-NNNNNN` | `server/tests/lab-02/create-ticket.api.test.ts` | **PASS** |
+| **API-02** | API | AC-05, BR-05 | Reject ticket creation with missing/invalid summary | `400 Bad Request` with field validation details | `server/tests/lab-02/create-ticket.api.test.ts` | **PASS** |
+| **API-03** | API | AC-05, BR-05 | Reject ticket creation with invalid category/system | `404 Not Found` for invalid reference foreign key | `server/tests/lab-02/create-ticket.api.test.ts` | **PASS** |
 | **API-04** | API | AC-02, FR-01 | Retrieve active requesters list | `200 OK`; returns 4 active users; excludes inactive | `server/tests/lab-02/requesters.api.test.ts` | **PASS** |
 | **API-05** | API | AC-04, FR-03 | Retrieve reference data (Categories & Systems) | `200 OK`; returns 4 categories and 7 related systems | `server/tests/lab-02/reference-data.api.test.ts` | **PASS** |
 | **API-06** | API | AC-07, AC-08 | Query tickets with search, category/priority/status filters | `200 OK`; returns filtered subset with pagination meta | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
@@ -34,9 +34,9 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 | **API-14** | API | AC-17, BR-11 | Soft-remove attachment with valid reason | `200 OK`; `removedAt` set, metadata retained | `server/tests/lab-02/attachments.api.test.ts` | Planned |
 | **API-15** | API | AC-18, BR-12 | Block download for soft-removed attachment | `404 Not Found` / `410 Gone`; download rejected | `server/tests/lab-02/attachments.api.test.ts` | Planned |
 | **UI-01** | UI | AC-02, FR-01 | Render Requester Selector when no context selected | Selector dropdown displayed with active users | `client/tests/lab-02/RequesterSelector.test.tsx` | **PASS** |
-| **UI-02** | UI | AC-05, BR-05 | Show inline field validation errors on empty submit | Red error messages displayed below invalid inputs | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
-| **UI-03** | UI | AC-01, BR-14 | Submit button displays busy state during async call | Button disabled with loading spinner | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
-| **UI-04** | UI | AC-06, BR-07 | Preserve form field values when API submission fails | Inputs retained, error notification shown | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
+| **UI-02** | UI | AC-05, BR-05 | Show inline field validation errors on empty submit | Red error messages displayed below invalid inputs | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
+| **UI-03** | UI | AC-01, BR-14 | Submit button displays busy state during async call | Button disabled with loading spinner | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
+| **UI-04** | UI | AC-06, BR-07 | Preserve form field values when API submission fails | Inputs retained, error notification shown | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-05** | UI | AC-11, FR-09 | Display empty state vs no-results search filter state | Distinct empty state callouts rendered | `client/tests/lab-02/MyTickets.test.tsx` | Planned |
 | **UI-06** | UI | AC-13, FR-10 | Ticket detail renders all header fields as read-only | Shaded background `#F0F4F1`, inputs non-editable | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Planned |
 | **UI-07** | UI | AC-17, BR-11 | Soft removal modal prompts for removal reason | Reason textarea required before confirm enabled | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
@@ -98,20 +98,43 @@ npx playwright test
 ### Feature 2 Test Results (Verified)
 ```text
 === Backend Tests (Vitest) ===
- ✓ tests/lab-01/health.test.ts (1 test) 23ms
- ✓ tests/lab-01/categories.test.ts (1 test) 148ms
- ✓ tests/lab-02/requesters.api.test.ts (2 tests) 155ms
- ✓ tests/lab-02/reference-data.api.test.ts (2 tests) 158ms
+ ✓ tests/lab-01/health.test.ts (1 test)
+ ✓ tests/lab-01/categories.test.ts (1 test)
+ ✓ tests/lab-02/requesters.api.test.ts (2 tests)
+ ✓ tests/lab-02/reference-data.api.test.ts (2 tests)
 
  Test Files  4 passed (4)
       Tests  6 passed (6)
 
 === Frontend Tests (Vitest & Testing Library) ===
- ✓ tests/lab-01/App.test.tsx (3 tests) 141ms
- ✓ tests/lab-02/RequesterSelector.test.tsx (4 tests) 220ms
+ ✓ tests/lab-01/App.test.tsx (3 tests)
+ ✓ tests/lab-02/RequesterSelector.test.tsx (4 tests)
 
  Test Files  2 passed (2)
       Tests  7 passed (7)
+```
+
+### Feature 3 Test Results (Verified)
+```text
+=== Backend Tests (Vitest & Supertest) ===
+ ✓ tests/lab-02/ticket-number.test.ts (2 tests) [UNIT-01 / AC-01, BR-01]
+ ✓ tests/lab-02/validation.test.ts (8 tests) [UNIT-02 / AC-05, BR-05, BR-06]
+ ✓ tests/lab-01/health.test.ts (1 test)
+ ✓ tests/lab-01/categories.test.ts (1 test)
+ ✓ tests/lab-02/requesters.api.test.ts (2 tests) [API-04 / AC-02, BR-04]
+ ✓ tests/lab-02/reference-data.api.test.ts (2 tests) [API-05 / AC-04]
+ ✓ tests/lab-02/create-ticket.api.test.ts (7 tests) [API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02, BR-04, BR-05]
+
+ Test Files  7 passed (7)
+      Tests  23 passed (23)
+
+=== Frontend Tests (Vitest & Testing Library) ===
+ ✓ tests/lab-01/App.test.tsx (3 tests)
+ ✓ tests/lab-02/RequesterSelector.test.tsx (4 tests) [UI-01 / AC-02, BR-03, BR-04]
+ ✓ tests/lab-02/CreateTicket.test.tsx (5 tests) [UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-05, BR-06, BR-07, BR-14, UI Spec §4.3]
+
+ Test Files  3 passed (3)
+      Tests  12 passed (12)
 ```
 
 
