@@ -1,0 +1,273 @@
+:root {
+  --color-primary: #006b3c;
+  --color-secondary: #0b7a46;
+  --color-pale-green: #eaf6ef;
+  --color-bg-page: #f5f7f6;
+  --color-surface: #ffffff;
+  --color-text-main: #1b2e24;
+  --color-text-muted: #5f7367;
+  --color-field-bg: #ffffff;
+  --color-readonly-bg: #f0f4f1;
+  --color-error: #c5221f;
+  --color-warning: #d97706;
+  --color-success: #15803d;
+  --border-radius-base: 6px;
+  --box-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Zen Green Header */
+.zen-header {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.zen-header a {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.zen-nav-tab {
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-base);
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.zen-nav-tab:hover {
+  background-color: var(--color-secondary);
+  color: #ffffff;
+}
+
+.zen-nav-tab.active {
+  background-color: var(--color-secondary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Zen Green Buttons */
+.btn-zen-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.btn-zen-primary:hover,
+.btn-zen-primary:focus {
+  background-color: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: #ffffff;
+}
+
+.btn-zen-secondary {
+  background-color: #ffffff;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.btn-zen-secondary:hover {
+  background-color: var(--color-pale-green);
+  color: var(--color-primary);
+}
+
+.btn-zen-outline-light {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+}
+
+.btn-zen-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+/* Zen Green Cards & Surfaces */
+.zen-card {
+  background-color: var(--color-surface);
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius-base);
+  box-shadow: var(--box-shadow-card);
+}
+
+/* Zen Read-Only Fields & Surfaces */
+.zen-readonly-field {
+  background-color: var(--color-readonly-bg) !important;
+  border: 1px solid #cbd5e1 !important;
+  color: var(--color-text-main) !important;
+  cursor: default;
+}
+
+.zen-readonly-surface {
+  background-color: var(--color-readonly-bg) !important;
+}
+
+/* Zen Disclaimer & Badges */
+.zen-alert-info {
+  background-color: var(--color-pale-green);
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.zen-badge-user {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Field Validation Errors */
+.zen-field-error {
+  color: var(--color-error);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Zen Table Styles */
+.zen-table-container {
+  overflow-x: auto;
+  border-radius: var(--border-radius-base);
+  border: 1px solid #e2e8f0;
+}
+
+.zen-table {
+  margin-bottom: 0;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.zen-table th {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-bottom: none;
+  white-space: nowrap;
+}
+
+.zen-table td {
+  padding: 0.875rem 1rem;
+  font-size: 0.9rem;
+  vertical-align: middle;
+  border-top: 1px solid #e2e8f0;
+}
+
+.zen-table tbody tr:nth-child(even) {
+  background-color: var(--color-readonly-bg);
+}
+
+.zen-table tbody tr:hover {
+  background-color: #f1f8f4;
+}
+
+/* Zen Status Badges */
+.zen-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.zen-badge-status-new {
+  background-color: var(--color-pale-green);
+  color: var(--color-primary);
+  border: 1px solid #9fd3b6;
+}
+
+.zen-badge-status-in_progress {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.zen-badge-status-resolved {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.zen-badge-status-closed {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.zen-badge-status-cancelled {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* Zen Priority Badges */
+.zen-badge-priority-low {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.zen-badge-priority-medium {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.zen-badge-priority-high {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+.zen-badge-priority-urgent {
+  background-color: #fee2e2;
+  color: var(--color-error);
+  border: 1px solid #fca5a5;
+  font-weight: 700;
+}
+
+/* Mobile Ticket Cards */
+.zen-ticket-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius-base);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+
+.zen-ticket-card:active {
+  transform: translateY(1px);
+}
+
+/* Touch targets >= 44px */
+.touch-target {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pagination Bar */
+.zen-pagination-btn {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-base);
+  font-weight: 500;
+}
