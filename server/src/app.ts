@@ -3,6 +3,7 @@ import cors from "cors";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticket-number.js";
 import { validateTicketInput, PriorityType } from "./utils/ticket-validation.js";
+import { parseTicketQueryParams } from "./utils/ticket-query.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -95,6 +96,133 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
       error: {
         code: "INTERNAL_ERROR",
         message: "Failed to fetch development requesters",
+      },
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 Endpoint 5 — GET /api/tickets
+// Retrieve selected requester's tickets with search, multi-filter, sorting & pagination
+// ---------------------------------------------------------------------------
+app.get("/api/tickets", async (req: Request, res: Response) => {
+  const correlationId = `req-${Date.now()}`;
+  try {
+    const parseResult = parseTicketQueryParams(req.query, req.headers);
+    if (!parseResult.isValid || !parseResult.params) {
+      console.warn(`[${correlationId}] GET /api/tickets validation failed:`, parseResult.errors);
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid query parameters",
+          fieldErrors: parseResult.errors,
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const {
+      requesterId,
+      search,
+      categoryId,
+      requestedPriority,
+      itPriority,
+      status,
+      sortBy,
+      sortOrder,
+      page,
+      limit,
+    } = parseResult.params;
+
+    const prisma = getPrisma();
+
+    // Verify requester exists and is active (ownership context)
+    const requester = await prisma.requesterUser.findFirst({
+      where: { id: requesterId, isActive: true },
+    });
+
+    if (!requester) {
+      console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
+      res.status(404).json({
+        error: {
+          code: "NOT_FOUND",
+          message: "Active requester not found",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Build filter criteria with strict ownership isolation (FR-06 / AC-03)
+    const where: any = {
+      requesterId: requester.id,
+    };
+
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    if (requestedPriority) {
+      where.requestedPriority = requestedPriority;
+    }
+
+    if (itPriority) {
+      where.itPriority = itPriority;
+    }
+
+    if (status) {
+      where.currentStatus = status;
+    }
+
+    if (search) {
+      where.OR = [
+        { ticketNumber: { contains: search, mode: "insensitive" } },
+        { summary: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: limit,
+        include: {
+          category: {
+            select: { id: true, name: true },
+          },
+          relatedSystem: {
+            select: { id: true, name: true },
+          },
+          requester: {
+            select: { id: true, fullName: true, email: true, department: true },
+          },
+        },
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    res.status(200).json({
+      tickets,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    console.error(`[${correlationId}] Failed to fetch tickets:`, error);
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to retrieve tickets",
+        correlationId,
       },
     });
   }
