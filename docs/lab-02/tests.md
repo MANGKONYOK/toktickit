@@ -28,6 +28,7 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 | **API-08** | API | AC-03, FR-06 | Multi-user isolation: query tickets of another requester | `200 OK`; only tickets owned by query requesterId returned | `server/tests/lab-02/my-tickets.api.test.ts` | **PASS** |
 | **API-09** | API | AC-13, FR-10 | Retrieve owned ticket detail with attachments | `200 OK`; returns ticket header and attachment list | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
 | **API-10** | API | AC-03, FR-06 | Unauthorized access: get ticket of another requester | `404 Not Found`; resource not leaked to other users | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
+| **API-11** | API | AC-14, FR-11 | Upload valid attachment ($\le 5\text{MB}$, JPG/PNG/WEBP/PDF) | `201 Created`; attachment stored and metadata returned | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **API-12** | API | AC-15, BR-09 | Reject oversized attachment (>5MB) or invalid MIME/extension mismatch | `413 Payload Too Large` / `415 Unsupported Media` | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **API-13** | API | AC-16, BR-10 | Reject 6th active attachment upload | `409 Conflict`; maximum 5 active limit reached | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
 | **API-14** | API | AC-17, BR-11 | Soft-remove attachment with valid reason | `200 OK`; `removedAt` set, metadata retained | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |

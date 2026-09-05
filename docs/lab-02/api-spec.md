@@ -3,7 +3,7 @@
 ## 1. Overview
 - **Base URL:** `/api`
 - **Content-Type:** `application/json` (except file uploads using `multipart/form-data`)
-- **Simulated Identity Context:** In Lab 2, user identity is passed via `requesterId` in request bodies, query strings (`?requesterId=1`), or the custom header `x-requester-id: 1`. This is purely a testing context and explicitly not authentication.
+- **Simulated Identity Context:** In Lab 2, user identity is transmitted primarily via the custom request header `x-requester-id: <id>`, which takes authoritative precedence across all endpoints to prevent tenant spoofing. Fallback query parameters (`?requesterId=1`) and request body fields (`requesterId`) are supported for browser download links and backwards compatibility. This simulated identity is purely a testing context and explicitly not production authentication.
 
 ### Standard Response Envelopes
 
@@ -48,7 +48,7 @@
         "message": "Summary must be between 5 and 100 characters"
       }
     ],
-    "correlationId": "req-1724142000-cpe888"
+    "correlationId": "req-4b5cf2f4-19e1-4985-bb2e-b22e42a27487"
   }
 }
 ```

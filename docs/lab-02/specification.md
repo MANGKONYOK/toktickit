@@ -201,13 +201,13 @@ The API implements all 10 required capabilities defined in Section 6 of the Labs
 | **1** | `/api/categories` | `GET` | Retrieve active categories | None | `200`, `500` |
 | **2** | `/api/related-systems` | `GET` | Retrieve active related systems | None | `200`, `500` |
 | **3** | `/api/requesters` | `GET` | Retrieve active development requesters | None | `200`, `500` |
-| **4** | `/api/tickets` | `POST` | Create a validated ticket | JSON `{ requesterId, categoryId, relatedSystemId, summary, requestedPriority, description }` | `201`, `400`, `404`, `500` |
-| **5** | `/api/tickets` | `GET` | Retrieve selected requester's tickets | Query: `requesterId`, `search`, `categoryId`, `requestedPriority`, `itPriority`, `status`, `sortBy`, `sortOrder`, `page`, `limit` | `200`, `400`, `500` |
-| **6** | `/api/tickets/:id` | `GET` | Retrieve one owned ticket detail | Query: `requesterId` | `200`, `400`, `404`, `500` |
-| **7** | `/api/tickets/:id/attachments` | `POST` | Upload an attachment | Multipart: `file`, `requesterId` | `201`, `400`, `404`, `409`, `413`, `415`, `500` |
-| **8** | `/api/tickets/:id/attachments` | `GET` | Retrieve attachment metadata list | Query: `requesterId` | `200`, `404`, `500` |
-| **9** | `/api/attachments/:id/download`| `GET` | Download an active attachment | Query: `requesterId` | `200`, `404`, `410`, `500` |
-| **10**| `/api/attachments/:id` | `DELETE`| Soft-remove an attachment with reason | JSON `{ requesterId, reason }` | `200`, `400`, `404`, `409`, `500` |
+| **4** | `/api/tickets` | `POST` | Create a validated ticket | Header: `x-requester-id` (authoritative) or JSON `{ requesterId, categoryId, relatedSystemId, summary, requestedPriority, description }` | `201`, `400`, `404`, `500` |
+| **5** | `/api/tickets` | `GET` | Retrieve selected requester's tickets | Header: `x-requester-id` (authoritative) or Query: `requesterId`, `search`, `categoryId`, `requestedPriority`, `itPriority`, `status`, `sortBy`, `sortOrder`, `page`, `limit` | `200`, `400`, `404`, `500` |
+| **6** | `/api/tickets/:id` | `GET` | Retrieve one owned ticket detail | Header: `x-requester-id` (authoritative) or Query: `requesterId` | `200`, `400`, `404`, `500` |
+| **7** | `/api/tickets/:id/attachments` | `POST` | Upload an attachment | Header: `x-requester-id` (authoritative), Multipart: `file`, `requesterId` | `201`, `400`, `404`, `409`, `413`, `415`, `500` |
+| **8** | `/api/tickets/:id/attachments` | `GET` | Retrieve attachment metadata list | Header: `x-requester-id` (authoritative) or Query: `requesterId` | `200`, `404`, `500` |
+| **9** | `/api/attachments/:id/download`| `GET` | Download an active attachment | Header: `x-requester-id` (authoritative) or Query: `requesterId` | `200`, `404`, `410`, `500` |
+| **10**| `/api/attachments/:id` | `DELETE`| Soft-remove an attachment with reason | Header: `x-requester-id` (authoritative) or JSON `{ requesterId, reason }` | `200`, `400`, `404`, `409`, `500` |
 
 ---
 
@@ -237,17 +237,17 @@ The API implements all 10 required capabilities defined in Section 6 of the Labs
 ## 10. Definition of Done (DoD)
 
 ### Part 1: Product Completion
-- [ ] All approved scope features implemented (Requester Context, Create Ticket, My Tickets, Detail, Attachments).
-- [ ] All 18 Acceptance Criteria (`AC-01` to `AC-18`) verified with passing automated tests across all 6 test levels.
-- [ ] Conforms strictly to data schema, API contract, and Zen Green visual specification.
-- [ ] No required tests skipped, commented out, or flaky.
-- [ ] Responsive design verified on Desktop ($\ge 992\text{px}$), Tablet ($768\text{px}-991\text{px}$), and Mobile ($< 768\text{px}$).
+- [x] All approved scope features implemented (Requester Context, Create Ticket, My Tickets, Detail, Attachments).
+- [x] All 18 Acceptance Criteria (`AC-01` to `AC-18`) verified with passing automated tests across all 6 test levels.
+- [x] Conforms strictly to data schema, API contract, and Zen Green visual specification.
+- [x] No required tests skipped, commented out, or flaky.
+- [x] Responsive design verified on Desktop ($\ge 992\text{px}$), Tablet ($768\text{px}-991\text{px}$), and Mobile ($< 768\text{px}$).
 
 ### Part 2: Course Delivery Requirements
-- [ ] Staging workflow followed (`main` $\rightarrow$ `lab2-staging` $\rightarrow$ feature branches $\rightarrow$ PR reviews $\rightarrow$ release PR).
-- [ ] GitHub project Kanban updated with all issues in `Done`.
-- [ ] All required documents in `docs/lab-02/` complete, accurate, and approved.
-- [ ] PDF submission compiled with Answer Parts 1 through 9.
+- [x] Staging workflow followed (`main` $\rightarrow$ `lab2-staging` $\rightarrow$ feature branches $\rightarrow$ PR reviews $\rightarrow$ release PR).
+- [x] GitHub project Kanban updated with all issues in `Done`.
+- [x] All required documents in `docs/lab-02/` complete, accurate, and approved.
+- [x] PDF submission compiled with Answer Parts 1 through 9.
 
 ---
 
@@ -258,7 +258,7 @@ The following explicit engineering rulings govern the Lab 2 implementation:
 1. **Ticket Number Format & Uniqueness:** Official Ticket Numbers follow `TKT-YYYY-NNNNNN` where `YYYY` is the current UTC year and `NNNNNN` is a zero-padded 6-digit sequence. Uniqueness is guaranteed by generating the identifier inside a database transaction and enforcing a PostgreSQL `@unique` index on `Ticket.ticketNumber`.
 2. **Attachment Storage Strategy:** In Lab 2, attachment binaries are stored in a dedicated server storage directory (`server/uploads/attachments/`) using server-generated randomized identifiers (`${Date.now()}-${random}${ext}`) rather than raw user-supplied filenames, strictly preventing filesystem path traversal, directory collisions, and unicode filename attacks. The user's original filename (`originalName`), MIME type, file size, and soft-removal audit fields reside securely in PostgreSQL (`Attachment` model).
 3. **Create-then-Upload Atomicity & Compensation:** Initial ticket creation creates the `Ticket` database record first. If an optional initial attachment upload fails, the server reports the upload error while keeping the ticket intact, enabling the user to retry attachment uploads from Ticket Detail without creating duplicate tickets.
-4. **Development Requester Session Location:** The selected Development Requester identity lives in client-side state (`React Context` backed by `localStorage`) and is transmitted to the backend via `requesterId` in query strings / request bodies or the `x-requester-id` testing header. This simulates user identity without introducing premature token/session infrastructure.
+4. **Development Requester Session Location:** The selected Development Requester identity lives in client-side state (`React Context` backed by `localStorage`) and is transmitted to the backend primarily via the `x-requester-id` HTTP request header, which takes strict precedence over query strings and request bodies to prevent tenant spoofing. Fallback query parameters are supported for browser download links (`<a href>`), and fallback body fields are supported for backwards compatibility.
 5. **Enums vs. Reference Tables:** 
    - `Category` and `RelatedSystem` are implemented as database **Reference Tables** (`Category`, `RelatedSystem`) to allow dynamic database administration and foreign key integrity.
    - `Priority` (`LOW`, `MEDIUM`, `HIGH`, `URGENT`) and `TicketStatus` (`NEW`, `ASSIGNED`, `IN_PROGRESS`, `PENDING_REQUESTER`, `RESOLVED`, `CLOSED`, `CANCELLED`) are implemented as **Prisma Enums** to enforce strict type-safe state transitions across the application.
