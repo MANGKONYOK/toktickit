@@ -219,7 +219,7 @@ describe("CreateTicket Component (UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-
   });
 
   it("shows error alert and retry button when reference data loading fails", async () => {
-    vi.spyOn(api, "fetchCategories").mockRejectedValueOnce(
+    vi.spyOn(api, "fetchCategories").mockRejectedValue(
       new Error("Categories service unavailable")
     );
 

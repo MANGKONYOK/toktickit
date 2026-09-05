@@ -57,6 +57,49 @@ export interface SystemStatus {
   categories: Category[];
 }
 
+export interface TicketQueryParams {
+  requesterId?: number;
+  search?: string;
+  categoryId?: number;
+  requestedPriority?: Priority;
+  itPriority?: Priority;
+  status?: TicketStatus;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedTicketsResponse {
+  tickets: Ticket[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface Attachment {
+  id: number;
+  ticketId: number;
+  fileName: string;
+  originalName?: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+  removedAt?: string | null;
+  removedById?: number | null;
+  removalReason?: string | null;
+  isRemoved?: boolean;
+}
+
+export interface TicketDetailResponse extends Ticket {
+  requester?: RequesterUser;
+  attachments?: Attachment[];
+  removedAttachments?: Attachment[];
+}
+
 export async function checkSystem(): Promise<SystemStatus> {
   const healthRes = await fetch(`${API_URL}/api/health`);
   if (!healthRes.ok) {
@@ -129,24 +172,56 @@ export async function createTicket(payload: CreateTicketPayload): Promise<Ticket
   return res.json();
 }
 
-export interface Attachment {
-  id: number;
-  ticketId: number;
-  fileName: string;
-  originalName?: string;
-  fileSize: number;
-  mimeType: string;
-  uploadedAt: string;
-  removedAt?: string | null;
-  removedById?: number | null;
-  removalReason?: string | null;
-  isRemoved?: boolean;
-}
+export async function fetchMyTickets(
+  params: TicketQueryParams
+): Promise<PaginatedTicketsResponse> {
+  const query = new URLSearchParams();
 
-export interface TicketDetailResponse extends Ticket {
-  requester?: RequesterUser;
-  attachments?: Attachment[];
-  removedAttachments?: Attachment[];
+  if (params.search) {
+    query.set("search", params.search);
+  }
+  if (params.categoryId !== undefined) {
+    query.set("categoryId", String(params.categoryId));
+  }
+  if (params.requestedPriority) {
+    query.set("requestedPriority", params.requestedPriority);
+  }
+  if (params.itPriority) {
+    query.set("itPriority", params.itPriority);
+  }
+  if (params.status) {
+    query.set("status", params.status);
+  }
+  if (params.sortBy) {
+    query.set("sortBy", params.sortBy);
+  }
+  if (params.sortOrder) {
+    query.set("sortOrder", params.sortOrder);
+  }
+  if (params.page !== undefined) {
+    query.set("page", String(params.page));
+  }
+  if (params.limit !== undefined) {
+    query.set("limit", String(params.limit));
+  }
+
+  const headers: Record<string, string> = {};
+  if (params.requesterId !== undefined) {
+    headers["x-requester-id"] = String(params.requesterId);
+  }
+
+  const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.error?.message || `Failed to fetch tickets: HTTP ${res.status}`
+    );
+  }
+
+  return res.json();
 }
 
 export async function fetchTicketDetail(ticketId: number, requesterId: number): Promise<TicketDetailResponse> {
@@ -216,4 +291,4 @@ export async function softRemoveAttachment(
 
 export function getAttachmentDownloadUrl(attachmentId: number, requesterId: number): string {
   return `${API_URL}/api/attachments/${attachmentId}/download?requesterId=${requesterId}`;
-}
+}

@@ -23,9 +23,9 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 | **API-03** | API | AC-05, BR-05 | Reject ticket creation with invalid category/system | `404 Not Found` for invalid reference foreign key | `server/tests/lab-02/create-ticket.api.test.ts` | **PASS** |
 | **API-04** | API | AC-02, FR-01 | Retrieve active requesters list | `200 OK`; returns 4 active users; excludes inactive | `server/tests/lab-02/requesters.api.test.ts` | **PASS** |
 | **API-05** | API | AC-04, FR-03 | Retrieve reference data (Categories & Systems) | `200 OK`; returns 4 categories and 7 related systems | `server/tests/lab-02/reference-data.api.test.ts` | **PASS** |
-| **API-06** | API | AC-07, AC-08 | Query tickets with search, category/priority/status filters | `200 OK`; returns filtered subset with pagination meta | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
-| **API-07** | API | AC-09, AC-10 | Query tickets with custom sorting and pagination | `200 OK`; returns ordered results with correct page/limit | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
-| **API-08** | API | AC-03, FR-06 | Multi-user isolation: query tickets of another requester | `200 OK`; only tickets owned by query requesterId returned | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
+| **API-06** | API | AC-07, AC-08 | Query tickets with search, category/priority/status filters | `200 OK`; returns filtered subset with pagination meta | `server/tests/lab-02/my-tickets.api.test.ts` | **PASS** |
+| **API-07** | API | AC-09, AC-10 | Query tickets with custom sorting and pagination | `200 OK`; returns ordered results with correct page/limit | `server/tests/lab-02/my-tickets.api.test.ts` | **PASS** |
+| **API-08** | API | AC-03, FR-06 | Multi-user isolation: query tickets of another requester | `200 OK`; only tickets owned by query requesterId returned | `server/tests/lab-02/my-tickets.api.test.ts` | **PASS** |
 | **API-09** | API | AC-13, FR-10 | Retrieve owned ticket detail with attachments | `200 OK`; returns ticket header and attachment list | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
 | **API-10** | API | AC-03, FR-06 | Unauthorized access: get ticket of another requester | `404 Not Found`; resource not leaked to other users | `server/tests/lab-02/ticket-detail.api.test.ts` | **PASS** |
 | **API-11** | API | AC-14, FR-11 | Upload valid attachment ($\le 5\text{MB}$, JPG/PNG/PDF) | `201 Created`; attachment stored and metadata returned | `server/tests/lab-02/attachments.api.test.ts` | **PASS** |
@@ -37,11 +37,11 @@ Sprint 2 enforces strict Spec-Driven Development (Spec DD) and Test-Driven Devel
 | **UI-02** | UI | AC-05, BR-05 | Show inline field validation errors on empty submit | Red error messages displayed below invalid inputs | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-03** | UI | AC-01, BR-14 | Submit button displays busy state during async call | Button disabled with loading spinner | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
 | **UI-04** | UI | AC-06, BR-07 | Preserve form field values when API submission fails | Inputs retained, error notification shown | `client/tests/lab-02/CreateTicket.test.tsx` | **PASS** |
-| **UI-05** | UI | AC-11, FR-09 | Display empty state vs no-results search filter state | Distinct empty state callouts rendered | `client/tests/lab-02/MyTickets.test.tsx` | Planned |
+| **UI-05** | UI | AC-11, FR-09 | Display empty state vs no-results search filter state | Distinct empty state callouts rendered | `client/tests/lab-02/MyTickets.test.tsx` | **PASS** |
 | **UI-06** | UI | AC-13, FR-10 | Ticket detail renders all header fields as read-only | Shaded background `#F0F4F1`, inputs non-editable | `client/tests/lab-02/TicketDetail.test.tsx` | **PASS** |
 | **UI-07** | UI | AC-17, BR-11 | Soft removal modal prompts for removal reason | Reason textarea required before confirm enabled | `client/tests/lab-02/AttachmentSection.test.tsx` | **PASS** |
 | **STYLE-01**| Style | AC-13, NFR-02 | Assert Zen Green color tokens and read-only styling | `#006B3C`, `#0B7A46`, `#F0F4F1` applied correctly | `client/tests/lab-02/ZenGreenStyle.test.tsx` | Planned |
-| **RESP-01** | Responsive | NFR-01 | Multi-viewport responsive checks (Desktop, Tablet, Mobile) | Form stacks vertically on mobile, zero overflow-x | `client/tests/lab-02/ResponsiveLayout.test.tsx` | Planned |
+| **RESP-01** | Responsive | NFR-01 | Multi-viewport responsive checks (Desktop, Tablet, Mobile) | Form stacks vertically on mobile, zero overflow-x | `client/tests/lab-02/ResponsiveLayout.test.tsx` | **PASS** |
 | **E2E-01** | E2E | AC-01..18 | Full Requester journey: create, list, filter, detail, attachments | All actions complete across Desktop/Tablet/Mobile | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
 
 ---
@@ -137,6 +137,31 @@ npx playwright test
       Tests  12 passed (12)
 ```
 
+### Feature 4 Test Results (Verified)
+```text
+=== Backend Tests (Vitest & Supertest) ===
+ ✓ tests/lab-02/validation.test.ts (8 tests) [UNIT-02 / AC-05, BR-05, BR-06]
+ ✓ tests/lab-02/ticket-number.test.ts (2 tests) [UNIT-01 / AC-01, BR-01]
+ ✓ tests/lab-01/health.test.ts (1 test)
+ ✓ tests/lab-01/categories.test.ts (1 test)
+ ✓ tests/lab-02/requesters.api.test.ts (2 tests) [API-04 / AC-02, BR-04]
+ ✓ tests/lab-02/reference-data.api.test.ts (2 tests) [API-05 / AC-04]
+ ✓ tests/lab-02/create-ticket.api.test.ts (7 tests) [API-01, API-02, API-03 / AC-01, AC-05, BR-01, BR-02, BR-04, BR-05]
+ ✓ tests/lab-02/my-tickets.api.test.ts (16 tests) [API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09, AC-10, FR-06, FR-07, FR-08]
+
+ Test Files  8 passed (8)
+      Tests  39 passed (39)
+
+=== Frontend Tests (Vitest & Testing Library) ===
+ ✓ tests/lab-02/ResponsiveLayout.test.tsx (2 tests) [RESP-01 / NFR-01, style-contract.md]
+ ✓ tests/lab-01/App.test.tsx (3 tests)
+ ✓ tests/lab-02/MyTickets.test.tsx (5 tests) [UI-05 / AC-07, AC-08, AC-09, AC-10, AC-11, FR-07, FR-08, FR-09]
+ ✓ tests/lab-02/RequesterSelector.test.tsx (4 tests) [UI-01 / AC-02, BR-03, BR-04]
+ ✓ tests/lab-02/CreateTicket.test.tsx (5 tests) [UI-02, UI-03, UI-04 / AC-01, AC-05, AC-06, BR-05, BR-06, BR-07, BR-14, UI Spec §4.3]
+
+ Test Files  5 passed (5)
+      Tests  19 passed (19)
+```
 
 ---
 
