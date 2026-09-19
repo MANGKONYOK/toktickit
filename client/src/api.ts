@@ -36,6 +36,7 @@ export interface Ticket {
   summary: string;
   description: string;
   ticketOwner: string;
+  resolvedByRequester?: boolean;
   createdAt: string;
   updatedAt: string;
   category?: Category;
@@ -95,9 +96,23 @@ export interface Attachment {
 }
 
 export interface TicketDetailResponse extends Ticket {
-  requester?: RequesterUser;
-  attachments?: Attachment[];
+  ticketOwnerId?: number | null;
+  resolvedByRequester?: boolean;
+  category: Category;
+  relatedSystem?: RelatedSystem | null;
+  requester: RequesterUser;
+  attachments: Attachment[];
   removedAttachments?: Attachment[];
+}
+
+export interface CommentItem {
+  id: number;
+  ticketId?: number;
+  authorId?: number;
+  authorName: string;
+  authorRole: string;
+  content: string;
+  createdAt: string;
 }
 
 export async function checkSystem(): Promise<SystemStatus> {
@@ -153,6 +168,7 @@ export async function createTicket(payload: CreateTicketPayload): Promise<Ticket
       "Content-Type": "application/json",
       "x-requester-id": String(payload.requesterId),
     },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
 
@@ -212,6 +228,7 @@ export async function fetchMyTickets(
 
   const res = await fetch(`${API_URL}/api/tickets?${query.toString()}`, {
     headers,
+    credentials: "include",
   });
 
   if (!res.ok) {
@@ -224,11 +241,16 @@ export async function fetchMyTickets(
   return res.json();
 }
 
-export async function fetchTicketDetail(ticketId: number, requesterId: number): Promise<TicketDetailResponse> {
-  const res = await fetch(`${API_URL}/api/tickets/${ticketId}?requesterId=${requesterId}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
+export async function fetchTicketDetail(ticketId: number, requesterId?: number): Promise<TicketDetailResponse> {
+  const queryParam = requesterId ? `?requesterId=${requesterId}` : "";
+  const headers: Record<string, string> = {};
+  if (requesterId) {
+    headers["x-requester-id"] = String(requesterId);
+  }
+
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}${queryParam}`, {
+    headers,
+    credentials: "include",
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -291,6 +313,55 @@ export async function softRemoveAttachment(
 
 export function getAttachmentDownloadUrl(attachmentId: number, requesterId: number): string {
   return `${API_URL}/api/attachments/${attachmentId}/download?requesterId=${requesterId}`;
+}
+
+export async function fetchComments(ticketId: number): Promise<CommentItem[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || `Failed to fetch comments (HTTP ${res.status})`);
+  }
+  const data = await res.json();
+  return data.comments || [];
+}
+
+export async function postComment(ticketId: number, content: string): Promise<CommentItem> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ content }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error?.message || `Failed to post comment (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = data.error?.code;
+    throw err;
+  }
+  return data.comment;
+}
+
+export async function indicateProblemResolved(
+  ticketId: number,
+  comment?: string
+): Promise<{ ticket: any; message: string }> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/resolve-indication`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ comment }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error?.message || `Failed to indicate problem resolved (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = data.error?.code;
+    throw err;
+  }
+  return data;
 }
 
 export async function loginApi(credentials: { email: string; password: string }) {

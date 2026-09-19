@@ -13,6 +13,7 @@
 | :---: | :--- | :--- | :--- | :--- |
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
+| #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Under Review** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -106,6 +107,30 @@
      - Synchronized `specification.md` §8.3 to accurately document all 13 provisioned accounts (10 active, 3 inactive) including Lab 2 compatibility accounts.
   5. Schema Documentation Synchronization (Issue 8):
      - Updated `Attachment` model definition in `docs/lab-03/specification.md` §8.1 to match `schema.prisma` exactly (`fileName`, `fileSize`, `filePath`, `uploadedAt`, `removedAt`, `removalReason`).
+  ```
+
+#### PR #3 (`lab3-feature/3-requester-continuity`)
+
+- **Author implementation notes:**
+  - Enforced session identity precedence for ticket creation (`POST /api/tickets`), binding `requesterId` strictly to `req.user.id` and ignoring spoofed body/header values (AC-08).
+  - Maintained complete backward compatibility with Lab 2 simulated requester context via `x-requester-id` / query fallback when unauthenticated.
+  - Implemented multi-user ticket ownership isolation (`GET /api/tickets/:id`), returning HTTP 404 `TICKET_NOT_FOUND` to requesters attempting to view unowned tickets to prevent ID enumeration (AC-09).
+  - Built Public Comments stream endpoints (`POST /api/tickets/:id/comments`, `GET /api/tickets/:id/comments`) allowing Requesters (for owned tickets) and Staff/Admin (for any ticket) to collaborate publicly (AC-10 / FR-06).
+  - Built Requester Problem Resolved indication endpoint (`PATCH /api/tickets/:id/resolve-indication`) setting `resolvedByRequester = true` without altering operational status (BR-05 / AC-11).
+  - Enhanced client UI: updated `TicketDetail.tsx` with live Public Discussion thread, comment posting form, and "✓ Problem Appears Resolved" toggle/badge; integrated `useAuth` into `CreateTicket.tsx` and `MyTickets.tsx`.
+  - Added automated test suites: `server/tests/lab-03/tickets.api.test.ts` (7 tests), `server/tests/lab-03/comments-notes.api.test.ts` (8 tests), and `client/tests/lab-03/TicketComments.test.tsx` (4 tests).
+  - Verification: 100% pass across all 103 server tests (88 baseline + 15 new) and 49 client tests (45 baseline + 4 new), preserving all 61 Lab 2 regression tests.
+
+- **Reviewer comment received:**
+
+  ```text
+  [Pending review from @kmood-Sakura]
+  ```
+
+- **How I responded:**
+
+  ```text
+  [Pending review response]
   ```
 
 ---

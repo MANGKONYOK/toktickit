@@ -15,6 +15,7 @@ import {
   requireAuth,
   requirePasswordChangeClear,
   requireRole,
+  authenticateSession,
   SESSION_COOKIE_NAME,
   SESSION_SECRET,
 } from "./middleware/auth.js";
@@ -136,7 +137,23 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 app.get("/api/tickets", async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
-    const parseResult = parseTicketQueryParams(req.query, req.headers);
+    const sessionUser = await authenticateSession(req);
+    if (sessionUser?.mustChangePassword) {
+      res.status(403).json({
+        error: {
+          code: "PASSWORD_CHANGE_REQUIRED",
+          message: "You must change your password before accessing this resource.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const queryHeaders = sessionUser
+      ? { ...req.headers, "x-requester-id": String(sessionUser.id) }
+      : req.headers;
+
+    const parseResult = parseTicketQueryParams(req.query, queryHeaders);
     if (!parseResult.isValid || !parseResult.params) {
       console.warn(`[${correlationId}] GET /api/tickets validation failed:`, parseResult.errors);
       res.status(400).json({
@@ -235,8 +252,15 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
+    const mappedTickets = tickets.map((t) => ({
+      ...t,
+      status: t.currentStatus,
+      priority: t.requestedPriority,
+      resolvedByRequester: t.resolvedByRequester ?? false,
+    }));
+
     res.status(200).json({
-      tickets,
+      tickets: mappedTickets,
       pagination: {
         page,
         limit,
@@ -263,16 +287,30 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
 app.post("/api/tickets", async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
-    // Support requester identity duality with header taking absolute precedence
+    const sessionUser = await authenticateSession(req);
+    if (sessionUser?.mustChangePassword) {
+      res.status(403).json({
+        error: {
+          code: "PASSWORD_CHANGE_REQUIRED",
+          message: "You must change your password before accessing this resource.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Support requester identity duality with session taking absolute precedence (AC-08)
     const headerRequesterId = req.headers["x-requester-id"]
       ? Number(req.headers["x-requester-id"])
       : undefined;
+
+    const effectiveRequesterId = sessionUser?.id ?? headerRequesterId ?? req.body?.requesterId;
 
     const payload =
       req.body && typeof req.body === "object" && !Array.isArray(req.body)
         ? {
             ...req.body,
-            requesterId: headerRequesterId ?? req.body.requesterId,
+            requesterId: effectiveRequesterId,
           }
         : req.body;
 
@@ -339,16 +377,22 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
           categoryId: category.id,
           relatedSystemId: system.id,
           requestedPriority: priorityEnum,
-          itPriority: priorityEnum, // BR-02: Initial itPriority matches requestedPriority
+          itPriority: priorityEnum, // BR-13: Initial itPriority matches requestedPriority
           currentStatus: "NEW", // BR-02: Initial status is NEW
           summary: summary.trim(),
           description: description.trim(),
           ticketOwner: "Unassigned", // BR-02: Initial owner is Unassigned
+          resolvedByRequester: false,
         },
       });
     });
 
-    res.status(201).json(newTicket);
+    res.status(201).json({
+      ...newTicket,
+      status: newTicket.currentStatus,
+      priority: newTicket.requestedPriority,
+      resolvedByRequester: newTicket.resolvedByRequester,
+    });
   } catch (error) {
     console.error(`[${correlationId}] Failed to create ticket:`, error);
     res.status(500).json({
@@ -376,59 +420,101 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
       return;
     }
 
-    // Header identity takes absolute precedence over query parameter
-    const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
-    if (!requesterIdRaw) {
-      res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "Requester identity is required", correlationId },
-      });
-      return;
-    }
-
-    const requesterId = parseInt(String(requesterIdRaw), 10);
-    if (isNaN(requesterId) || requesterId <= 0) {
-      res.status(400).json({
-        error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId },
+    const sessionUser = await authenticateSession(req);
+    if (sessionUser?.mustChangePassword) {
+      res.status(403).json({
+        error: {
+          code: "PASSWORD_CHANGE_REQUIRED",
+          message: "You must change your password before accessing this resource.",
+          correlationId,
+        },
       });
       return;
     }
 
     const prisma = getPrisma();
+    let ticket;
 
-    // Verify requester exists and is active before querying ticket
-    const requester = await findActiveRequester(prisma, requesterId);
-    if (!requester) {
-      console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
-      res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+    if (sessionUser) {
+      if (sessionUser.role === Role.REQUESTER) {
+        // Ownership applied directly as a SQL where predicate (AC-09: 404 for unowned tickets)
+        ticket = await prisma.ticket.findFirst({
+          where: { id: ticketId, requesterId: sessionUser.id },
+          include: {
+            requester: {
+              select: { id: true, fullName: true, email: true, department: true },
+            },
+            category: { select: { id: true, name: true } },
+            relatedSystem: { select: { id: true, name: true } },
+            attachments: { orderBy: { uploadedAt: "asc" } },
+          },
+        });
+      } else {
+        // Staff and Admin can view any ticket
+        ticket = await prisma.ticket.findFirst({
+          where: { id: ticketId },
+          include: {
+            requester: {
+              select: { id: true, fullName: true, email: true, department: true },
+            },
+            category: { select: { id: true, name: true } },
+            relatedSystem: { select: { id: true, name: true } },
+            attachments: { orderBy: { uploadedAt: "asc" } },
+          },
+        });
+      }
+
+      if (!ticket) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+    } else {
+      // Legacy unauthenticated request: requires x-requester-id or query requesterId (Lab 2 compatibility)
+      const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
+      if (!requesterIdRaw) {
+        res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: "Requester identity is required", correlationId },
+        });
+        return;
+      }
+
+      const requesterId = parseInt(String(requesterIdRaw), 10);
+      if (isNaN(requesterId) || requesterId <= 0) {
+        res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId },
+        });
+        return;
+      }
+
+      const requester = await findActiveRequester(prisma, requesterId);
+      if (!requester) {
+        console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
+        res.status(404).json({
+          error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
+        });
+        return;
+      }
+
+      ticket = await prisma.ticket.findFirst({
+        where: { id: ticketId, requesterId: requester.id },
+        include: {
+          requester: {
+            select: { id: true, fullName: true, email: true, department: true },
+          },
+          category: { select: { id: true, name: true } },
+          relatedSystem: { select: { id: true, name: true } },
+          attachments: { orderBy: { uploadedAt: "asc" } },
+        },
       });
-      return;
-    }
 
-    // Ownership applied directly as a SQL where predicate (BR-08 / AC-03 / AC-13)
-    const ticket = await prisma.ticket.findFirst({
-      where: { id: ticketId, requesterId: requester.id },
-      include: {
-        requester: {
-          select: { id: true, fullName: true, email: true, department: true },
-        },
-        category: {
-          select: { id: true, name: true },
-        },
-        relatedSystem: {
-          select: { id: true, name: true },
-        },
-        attachments: {
-          orderBy: { uploadedAt: "asc" },
-        },
-      },
-    });
-
-    if (!ticket) {
-      res.status(404).json({
-        error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
-      });
-      return;
+      if (!ticket) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
     }
 
     const activeAttachments = ticket.attachments
@@ -465,9 +551,13 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
       summary: ticket.summary,
       description: ticket.description,
       requestedPriority: ticket.requestedPriority,
+      priority: ticket.requestedPriority,
       itPriority: ticket.itPriority,
       currentStatus: ticket.currentStatus,
+      status: ticket.currentStatus,
       ticketOwner: ticket.ticketOwner,
+      ticketOwnerId: ticket.ticketOwnerId,
+      resolvedByRequester: ticket.resolvedByRequester ?? false,
       createdAt: ticket.createdAt,
       updatedAt: ticket.updatedAt,
       requester: ticket.requester,
@@ -828,6 +918,251 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — POST /api/tickets/:id/comments
+// Add a public comment to a ticket (AC-10 / FR-06)
+// ---------------------------------------------------------------------------
+app.post(
+  "/api/tickets/:id/comments",
+  requireAuth,
+  requirePasswordChangeClear,
+  async (req: Request, res: Response) => {
+    const correlationId = randomUUID();
+    try {
+      const ticketId = parseInt(req.params.id, 10);
+      if (isNaN(ticketId) || ticketId <= 0) {
+        res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
+        });
+        return;
+      }
+
+      const { content } = req.body || {};
+      if (
+        !content ||
+        typeof content !== "string" ||
+        content.trim().length === 0 ||
+        content.trim().length > 2000
+      ) {
+        res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Comment content must be between 1 and 2000 characters",
+            fieldErrors: { content: "Comment content must be between 1 and 2000 characters" },
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+
+      // Requester may only comment on tickets they own (AC-09 / AC-10)
+      if (req.user!.role === Role.REQUESTER && ticket.requesterId !== req.user!.id) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+
+      const comment = await prisma.comment.create({
+        data: {
+          ticketId,
+          authorId: req.user!.id,
+          content: content.trim(),
+        },
+        include: {
+          author: {
+            select: { id: true, fullName: true, role: true },
+          },
+        },
+      });
+
+      res.status(201).json({
+        comment: {
+          id: comment.id,
+          ticketId: comment.ticketId,
+          authorId: comment.authorId,
+          authorName: comment.author.fullName,
+          authorRole: comment.author.role,
+          content: comment.content,
+          createdAt: comment.createdAt.toISOString(),
+        },
+      });
+    } catch (err) {
+      console.error(`[${correlationId}] POST /api/tickets/:id/comments failed:`, err);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to post comment", correlationId },
+      });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — GET /api/tickets/:id/comments
+// List public comments for a ticket in chronological order (AC-10)
+// ---------------------------------------------------------------------------
+app.get(
+  "/api/tickets/:id/comments",
+  requireAuth,
+  requirePasswordChangeClear,
+  async (req: Request, res: Response) => {
+    const correlationId = randomUUID();
+    try {
+      const ticketId = parseInt(req.params.id, 10);
+      if (isNaN(ticketId) || ticketId <= 0) {
+        res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
+        });
+        return;
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+
+      if (req.user!.role === Role.REQUESTER && ticket.requesterId !== req.user!.id) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+
+      const comments = await prisma.comment.findMany({
+        where: { ticketId },
+        orderBy: { createdAt: "asc" },
+        include: {
+          author: {
+            select: { id: true, fullName: true, role: true },
+          },
+        },
+      });
+
+      res.status(200).json({
+        comments: comments.map((c) => ({
+          id: c.id,
+          ticketId: c.ticketId,
+          authorId: c.authorId,
+          authorName: c.author.fullName,
+          authorRole: c.author.role,
+          content: c.content,
+          createdAt: c.createdAt.toISOString(),
+        })),
+      });
+    } catch (err) {
+      console.error(`[${correlationId}] GET /api/tickets/:id/comments failed:`, err);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to retrieve comments", correlationId },
+      });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — PATCH /api/tickets/:id/resolve-indication
+// Requester indicates problem appears resolved (AC-11 / BR-05)
+// ---------------------------------------------------------------------------
+app.patch(
+  "/api/tickets/:id/resolve-indication",
+  requireAuth,
+  requirePasswordChangeClear,
+  async (req: Request, res: Response) => {
+    const correlationId = randomUUID();
+    try {
+      const ticketId = parseInt(req.params.id, 10);
+      if (isNaN(ticketId) || ticketId <= 0) {
+        res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
+        });
+        return;
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+
+      // Only the ticket requester can indicate resolution on their own ticket (AC-11)
+      if (ticket.requesterId !== req.user!.id) {
+        res.status(404).json({
+          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+        });
+        return;
+      }
+
+      // Check terminal states
+      if (ticket.currentStatus === "CLOSED" || ticket.currentStatus === "CANCELLED") {
+        res.status(400).json({
+          error: {
+            code: "INVALID_ACTION",
+            message: "Cannot indicate problem resolution on a closed or cancelled ticket.",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          resolvedByRequester: true,
+        },
+      });
+
+      // If optional comment was provided, record it in Comment table
+      const commentContent = req.body?.comment;
+      if (typeof commentContent === "string" && commentContent.trim().length > 0) {
+        await prisma.comment.create({
+          data: {
+            ticketId,
+            authorId: req.user!.id,
+            content: commentContent.trim(),
+          },
+        });
+      }
+
+      res.status(200).json({
+        ticket: {
+          id: updated.id,
+          status: updated.currentStatus,
+          resolvedByRequester: updated.resolvedByRequester,
+        },
+        message: "Problem resolution indicated successfully.",
+      });
+    } catch (err) {
+      console.error(`[${correlationId}] PATCH /api/tickets/:id/resolve-indication failed:`, err);
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to indicate problem resolution", correlationId },
+      });
+    }
+  }
+);
 
 // ---------------------------------------------------------------------------
 // Lab 3 Endpoint — POST /api/auth/login
