@@ -74,7 +74,7 @@ The IT Department requires TokTickIT to transition from an isolated requester pr
 - **BR-01 (Three Mutually Exclusive Roles):** Every user account must possess exactly one role from the `Role` enum: `REQUESTER`, `IT_STAFF`, or `ADMIN`. Multi-role assignment is prohibited.
 - **BR-02 (Password Complexity):** Passwords must be at least 8 characters in length and contain at least one uppercase letter (`A-Z`), one lowercase letter (`a-z`), one numeric digit (`0-9`), and one special symbol (`@$!%*?&#^_-`).
 - **BR-03 (First-Login Password Change):** Users created with an initial password or whose password has been reset by an Admin must have `mustChangePassword = true`. All non-auth API endpoints and UI screens (except `POST /api/auth/change-password` and `POST /api/auth/logout`) are blocked until changed.
-- **BR-04 (Inactive Account Blocking):** Accounts with `isActive = false` must be denied authentication. The API must return HTTP 403 Forbidden with `{ "code": "ACCOUNT_INACTIVE", "message": "This account is inactive. Contact an Administrator." }`.
+- **BR-04 (Inactive Account Blocking & Evaluation Order):** To prevent account enumeration, authentication must validate credentials (email match and bcrypt password verification) *before* inspecting account active status. If credentials do not match or the user does not exist, the API must return HTTP 401 Unauthorized (`INVALID_CREDENTIALS`). Only when credentials successfully match an account with `isActive = false` does the API return HTTP 403 Forbidden with `{ "code": "ACCOUNT_INACTIVE", "message": "This account is inactive. Contact an Administrator." }`.
 - **BR-05 (Password Hashing):** Passwords must never be stored or logged in plaintext. Hashes must be generated using `bcrypt` with a work factor (salt rounds) of at least 10.
 - **BR-06 (Session Authority):** User identity and role must be derived strictly from the verified server-side session / token (`req.user`). Client-provided identity headers (`x-requester-id`) are deprecated and ignored.
 
@@ -213,6 +213,8 @@ model User {
 
   createdTickets     Ticket[]       @relation("RequesterTickets")
   assignedTickets    Ticket[]       @relation("AssignedStaffTickets")
+  uploadedAttachments Attachment[]  @relation("AttachmentUploader")
+  removedAttachments  Attachment[]  @relation("AttachmentRemover")
   comments           Comment[]
   internalNotes      InternalNote[]
 
@@ -249,6 +251,27 @@ model Ticket {
   @@index([ticketOwnerId])
 }
 
+model Attachment {
+  id             Int       @id @default(autoincrement())
+  ticketId       Int
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  uploadedById   Int
+  isRemoved      Boolean   @default(false)
+  removalReason  String?
+  removedById    Int?
+  removedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy     User      @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  removedBy      User?     @relation("AttachmentRemover", fields: [removedById], references: [id])
+
+  @@index([ticketId, isRemoved])
+}
+
 model Comment {
   id        Int      @id @default(autoincrement())
   ticketId  Int
@@ -276,7 +299,17 @@ model InternalNote {
 }
 ```
 
-### 8.2. Seed Data Architecture (`server/prisma/seed.ts`)
+*Note on `itPriority`:* When a ticket is created, the system dynamically initializes `itPriority` to match the requester's chosen `priority` (conforming to BR-13). The `@default(MEDIUM)` in Prisma serves solely as a database fallback.
+
+### 8.2. Lab 2 Requester Migration Strategy (§5.2)
+
+To evolve the Lab 2 database into the Lab 3 multi-role architecture without data loss:
+- **Table Evolution:** Existing `RequesterUser` records are migrated into `User` with `role = REQUESTER`.
+- **Initial Password Provisioning:** Migrated requesters receive the default initial password hash of `Password@2026` (`bcrypt`, 10 salt rounds) with `mustChangePassword = true`, requiring them to set a new password on their first login.
+- **Relational Integrity:** Foreign keys on existing `Ticket` (`requesterId`) and `Attachment` (`uploadedById`, `removedById`) records are retargeted from `RequesterUser` to `User`.
+- **Reference Tables:** Existing `Category` and `RelatedSystem` reference tables remain untouched.
+
+### 8.3. Seed Data Architecture (`server/prisma/seed.ts`)
 
 Default initial password: `Password@2026` (hashed with `bcrypt`, work factor 10).
 
@@ -365,19 +398,19 @@ All endpoints return standard JSON envelopes. Protected endpoints require valid 
 
 ### 11.1. Definition of Done Checklist
 
-- [x] All 15 Functional Requirements (FR-01..15) and 25 Business Rules (BR-01..25) are satisfied.
-- [x] All 22 Acceptance Criteria (AC-01..22) are mapped to automated tests with 100% pass status.
-- [x] All existing Lab 2 Requester capabilities pass regression testing under authenticated identity.
-- [x] Password hashing uses `bcrypt` with salt rounds $\ge 10$; plaintext passwords never stored.
-- [x] Server catch blocks redact internal database errors and return safe HTTP 500 envelopes with UUID `correlationId`.
-- [x] Role-Based Access Control is enforced server-side via Express middleware, returning HTTP 403.
-- [x] Internal Notes are verified 100% confidential and inaccessible to Requesters.
-- [x] Administrator safety guardrails (self-deactivation and last-admin protection) are verified by automated tests.
-- [x] Zen Green design tokens and responsive layouts ($\ge 992\text{px}$, $768\text{px}-991\text{px}$, $< 768\text{px}$) are upheld with zero horizontal overflow.
-- [x] Playwright multi-viewport automated E2E suites pass across Desktop, Tablet, and Mobile viewports.
+- [ ] All 15 Functional Requirements (FR-01..15) and 25 Business Rules (BR-01..25) are satisfied.
+- [ ] All 22 Acceptance Criteria (AC-01..22) are mapped to automated tests with 100% pass status.
+- [ ] All existing Lab 2 Requester capabilities pass regression testing under authenticated identity.
+- [ ] Password hashing uses `bcrypt` with salt rounds $\ge 10$; plaintext passwords never stored.
+- [ ] Server catch blocks redact internal database errors and return safe HTTP 500 envelopes with UUID `correlationId`.
+- [ ] Role-Based Access Control is enforced server-side via Express middleware, returning HTTP 403.
+- [ ] Internal Notes are verified 100% confidential and inaccessible to Requesters.
+- [ ] Administrator safety guardrails (self-deactivation and last-admin protection) are verified by automated tests.
+- [ ] Zen Green design tokens and responsive layouts ($\ge 992\text{px}$, $768\text{px}-991\text{px}$, $< 768\text{px}$) are upheld with zero horizontal overflow.
+- [ ] Playwright multi-viewport automated E2E suites pass across Desktop, Tablet, and Mobile viewports.
 
 ### 11.2. Key Technical Decisions
 
 - **Session vs. JWT:** We employ signed HTTP-only cookies storing a verified session token containing `{ userId, role }`. HTTP-only cookies prevent Cross-Site Scripting (XSS) credential theft while eliminating manual header handling on the client.
-- **Prisma Schema Migration Strategy:** Additive Prisma migrations convert `RequesterUser` to `User` and update foreign keys in `Ticket`, `Attachment`, `Comment`, and `InternalNote` without dropping existing category/system reference tables.
+- **Prisma Schema Migration Strategy:** Rather than a purely additive migration, Sprint 3 executes a structured schema evolution: evolving `RequesterUser` $\to$ `User`, updating foreign key references in `Ticket` (`requesterId`, `ticketOwnerId`) and `Attachment` (`uploadedById`, `removedById`), normalizing `currentStatus` $\to$ `status`, and adding `itPriority` and `resolvedByRequester`. Existing reference tables (`Category`, `RelatedSystem`) remain intact with zero data loss.
 - **Internal Note Visual Contrast:** To eliminate human error in operational IT environments, Internal Notes are styled with an unmistakable warm amber card background (`#FFF8E1` with `#FFE082` border), prominently labeled "Confidential Internal Note — IT Staff & Admin Only".
