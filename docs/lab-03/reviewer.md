@@ -158,6 +158,37 @@
      - 49/49 client tests passing across 12 test suites.
   ```
 
+- **Reviewer comment received (Round 2 at `f6f26e1`):**
+
+  ```text
+  Re-read at f6f26e1 — the branch now stands at 16 files, +1624 −352. All three rows are closed and I checked each against the code rather than the commit message. Nothing blocks; one thing below is older than this PR and is yours to place.
+
+  Good:
+  - All three of the last round closed — six ticket routes gated, the API-10 row restored, the role check reordered.
+  - app.ts:176 — a requester is bound at the query by where.requesterId = req.user!.id, and staff keep ?requesterId= as a filter rather than an identity.
+  - The Lab 2 suite was adapted, not weakened — no case lost, attachments went 14 to 19, and the diff adds ten new 401/403 assertions.
+
+  Issues & Warnings:
+  - Issue 4: GET /api/requesters (app.ts:108) still answers without requireAuth and returns fullName, email and department for every active requester. Now that its five siblings all demand a session, this is the one door left open, handing out the directory to anyone who asks.
+  - Warning 5: app.ts:142-143 rebuilds an x-requester-id header from req.user!.id so the Lab 2 query parser keeps its signature. Worth giving parseTicketQueryParams a requesterId argument and retiring the header for good.
+  ```
+
+- **How I responded (Round 2):**
+
+  ```text
+  Resolved both remaining review points:
+  1. Directory Enumeration Protection on GET /api/requesters (Issue 4):
+     - Added `requireAuth, requirePasswordChangeClear` to `GET /api/requesters` in `server/src/app.ts`, strictly closing the unauthenticated directory enumeration door.
+     - Updated `client/src/api.ts` `fetchRequesters` to pass `{ credentials: "include" }`.
+     - Updated `server/tests/lab-02/requesters.api.test.ts` to authenticate with `signBearerToken` and added a regression test verifying unauthenticated calls are rejected with 401 Unauthorized (`UNAUTHORIZED`).
+  2. Retiring Synthesized x-requester-id Header (Warning 5):
+     - Refactored `parseTicketQueryParams` in `server/src/utils/ticket-query.ts` to directly accept `requesterIdInput: number | Record<string, any>`, taking a numeric `effectiveRequesterId` as primary argument.
+     - In `server/src/app.ts` `GET /api/tickets`, replaced header synthesis with direct passing of `effectiveRequesterId` to `parseTicketQueryParams`, retiring the synthesized `x-requester-id` header entirely.
+  3. Verification:
+     - 110/110 server tests passing across 16 test files (0 failures).
+     - 49/49 client tests passing across 12 test suites (0 failures).
+  ```
+
 ---
 
 ## Pull Requests I Reviewed for My Partner (@kmood-Sakura)

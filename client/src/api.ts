@@ -138,7 +138,9 @@ export async function checkSystem(): Promise<SystemStatus> {
 }
 
 export async function fetchRequesters(): Promise<RequesterUser[]> {
-  const res = await fetch(`${API_URL}/api/requesters`);
+  const res = await fetch(`${API_URL}/api/requesters`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error(`Failed to fetch requesters: HTTP ${res.status}`);
   }

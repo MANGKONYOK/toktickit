@@ -34,12 +34,20 @@ const VALID_STATUSES = new Set(["NEW", "IN_PROGRESS", "RESOLVED", "CLOSED", "CAN
 
 export function parseTicketQueryParams(
   query: Record<string, any>,
-  headers: Record<string, any> = {}
+  requesterIdInput?: number | Record<string, any>
 ): QueryParseResult {
   const errors: Record<string, string> = {};
 
-  // Resolve requesterId: header identity takes absolute precedence to prevent query-param tenant spoofing (AC-03)
-  const rawRequesterId = headers["x-requester-id"] ?? query.requesterId;
+  // Resolve requesterId: direct number argument takes absolute precedence, with headers object fallback
+  let rawRequesterId: any;
+  if (typeof requesterIdInput === "number") {
+    rawRequesterId = requesterIdInput;
+  } else if (requesterIdInput && typeof requesterIdInput === "object") {
+    rawRequesterId = requesterIdInput["x-requester-id"] ?? query.requesterId;
+  } else {
+    rawRequesterId = query.requesterId;
+  }
+
   if (rawRequesterId === undefined || rawRequesterId === null || rawRequesterId === "") {
     errors.requesterId = "requesterId is required";
   }

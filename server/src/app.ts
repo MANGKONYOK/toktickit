@@ -104,8 +104,9 @@ app.get("/api/related-systems", async (_req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 // Lab 2 Endpoint 3 — GET /api/requesters
 // Retrieve active Development Requesters for the simulated selector (BR-04)
+// Protected by requireAuth to prevent unauthenticated directory enumeration
 // ---------------------------------------------------------------------------
-app.get("/api/requesters", async (_req: Request, res: Response) => {
+app.get("/api/requesters", requireAuth, requirePasswordChangeClear, async (_req: Request, res: Response) => {
   try {
     const requesters = await getPrisma().requesterUser.findMany({
       where: { isActive: true },
@@ -138,11 +139,11 @@ app.get("/api/tickets", requireAuth, requirePasswordChangeClear, async (req: Req
   const correlationId = `req-${randomUUID()}`;
   try {
     const isRequester = req.user!.role === Role.REQUESTER;
-    const queryHeaders = isRequester
-      ? { ...req.headers, "x-requester-id": String(req.user!.id) }
-      : (req.query.requesterId ? { ...req.headers, "x-requester-id": String(req.query.requesterId) } : req.headers);
+    const effectiveRequesterId = isRequester
+      ? req.user!.id
+      : (req.query.requesterId ? Number(req.query.requesterId) : req.user!.id);
 
-    const parseResult = parseTicketQueryParams(req.query, queryHeaders);
+    const parseResult = parseTicketQueryParams(req.query, effectiveRequesterId);
     if (!parseResult.isValid || !parseResult.params) {
       console.warn(`[${correlationId}] GET /api/tickets validation failed:`, parseResult.errors);
       res.status(400).json({
