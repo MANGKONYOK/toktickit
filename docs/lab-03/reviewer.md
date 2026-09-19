@@ -13,6 +13,7 @@
 | :---: | :--- | :--- | :--- | :--- |
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
+| #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -106,6 +107,116 @@
      - Synchronized `specification.md` §8.3 to accurately document all 13 provisioned accounts (10 active, 3 inactive) including Lab 2 compatibility accounts.
   5. Schema Documentation Synchronization (Issue 8):
      - Updated `Attachment` model definition in `docs/lab-03/specification.md` §8.1 to match `schema.prisma` exactly (`fileName`, `fileSize`, `filePath`, `uploadedAt`, `removedAt`, `removalReason`).
+  ```
+
+#### PR #3 (`lab3-feature/3-requester-continuity`)
+
+- **Author implementation notes:**
+  - Enforced session identity precedence for ticket creation (`POST /api/tickets`), binding `requesterId` strictly to `req.user.id` and ignoring spoofed body/header values (AC-08).
+  - Maintained complete backward compatibility with Lab 2 simulated requester context via `x-requester-id` / query fallback when unauthenticated.
+  - Implemented multi-user ticket ownership isolation (`GET /api/tickets/:id`), returning HTTP 404 `TICKET_NOT_FOUND` to requesters attempting to view unowned tickets to prevent ID enumeration (AC-09).
+  - Built Public Comments stream endpoints (`POST /api/tickets/:id/comments`, `GET /api/tickets/:id/comments`) allowing Requesters (for owned tickets) and Staff/Admin (for any ticket) to collaborate publicly (AC-10 / FR-06).
+  - Built Requester Problem Resolved indication endpoint (`PATCH /api/tickets/:id/resolve-indication`) setting `resolvedByRequester = true` without altering operational status (BR-05 / AC-11).
+  - Enhanced client UI: updated `TicketDetail.tsx` with live Public Discussion thread, comment posting form, and "✓ Problem Appears Resolved" toggle/badge; integrated `useAuth` into `CreateTicket.tsx` and `MyTickets.tsx`.
+  - Added automated test suites: `server/tests/lab-03/tickets.api.test.ts` (7 tests), `server/tests/lab-03/comments-notes.api.test.ts` (8 tests), and `client/tests/lab-03/TicketComments.test.tsx` (4 tests).
+  - Verification: 100% pass across all 103 server tests (88 baseline + 15 new) and 49 client tests (45 baseline + 4 new), preserving all 61 Lab 2 regression tests.
+
+- **Reviewer comment received:**
+
+  ```text
+  Read be2409e against lab3-staging — 12 files, +1356 −99. The three new endpoints are the careful part of this branch and I would keep all of them. One row blocks, and it is the one your own test plan already flinched at.
+
+  Good:
+  - app.ts:442 — ownership is a SQL where predicate, not a post-fetch check, with staff and admin on their own branch.
+  - app.ts:1120-1134 — resolve-indication writes only resolvedByRequester, leaves currentStatus alone and refuses CLOSED or CANCELLED with 400.
+  - app.ts:1055 — the comment author select is id, fullName, role, and neither comments handler touches internalNote.
+
+  Blocking Issues:
+  - Issue 4: The ticket routes still accept x-requester-id when no session is present. Unauthenticated calls to POST /api/tickets, GET /api/tickets, GET /api/tickets/:id, POST /api/tickets/:id/attachments, GET /api/tickets/:id/attachments, DELETE /api/attachments/:id, and GET /api/attachments/:id/download must return 401 Unauthorized per FR-05 & BR-06. Ticket identity must strictly bind to req.user.id.
+
+  Issues & Warnings:
+  - Issue 5: AC-08 reads Pass while the row that proves it was deleted. In tests.md line 37, API-10 was merged onto the same line as API-09 without a newline, hiding API-10 from Table 2.
+  - Warning 6: resolve-indication answers 404 where your matrix says 403. In specification.md:133, Indicate Problem Resolved is 403 for IT_STAFF and ADMIN, so role check must precede ticket ownership check.
+  ```
+
+- **How I responded:**
+
+  ```text
+  Resolved all peer review findings comprehensively:
+  1. Strict Authentication & Deprecation of Legacy Headers (Issue 4):
+     - Enforced `requireAuth, requirePasswordChangeClear` across all ticket and attachment routes (`POST /api/tickets`, `GET /api/tickets`, `GET /api/tickets/:id`, `POST /api/tickets/:id/attachments`, `GET /api/tickets/:id/attachments`, `DELETE /api/attachments/:id`, `GET /api/attachments/:id/download`).
+     - Unauthenticated requests strictly return HTTP 401 Unauthorized (`UNAUTHORIZED`).
+     - Completely eliminated `x-requester-id` and body/query `requesterId` identity fallbacks; ticket identity is strictly derived from authenticated session `req.user.id` (FR-05, BR-06).
+     - Re-aligned Lab 2 test suites (`create-ticket`, `my-tickets`, `ticket-detail`, `attachments`) using cryptographic session tokens (`signBearerToken`) and added regression tests ensuring unauthenticated calls receive 401 and legacy headers cannot spoof identity.
+  2. Table Formatting in tests.md (Issue 5):
+     - Separated `API-09` and `API-10` into two distinct markdown table rows with proper newlines in `docs/lab-03/tests.md`, restoring Table 2 rendering and verifying AC-08.
+  3. RBAC Matrix Alignment on Problem Resolution (Warning 6):
+     - Updated `PATCH /api/tickets/:id/resolve-indication` in `server/src/app.ts` to perform role verification first: non-requesters (`IT_STAFF`, `ADMIN`) receive HTTP 403 Forbidden (`FORBIDDEN`), matching the capability matrix in `specification.md:133`. Ownership verification follows, returning 404 for unowned tickets.
+     - Added automated tests in `server/tests/lab-03/tickets.api.test.ts` verifying 403 Forbidden for IT Staff and Admin callers.
+  4. Verification:
+     - 109/109 server tests passing across 16 test files (including all Lab 2 regression tests and Lab 3 auth/tickets/comments/notes suites).
+     - 49/49 client tests passing across 12 test suites.
+  ```
+
+- **Reviewer comment received (Round 2 at `f6f26e1`):**
+
+  ```text
+  Re-read at f6f26e1 — the branch now stands at 16 files, +1624 −352. All three rows are closed and I checked each against the code rather than the commit message. Nothing blocks; one thing below is older than this PR and is yours to place.
+
+  Good:
+  - All three of the last round closed — six ticket routes gated, the API-10 row restored, the role check reordered.
+  - app.ts:176 — a requester is bound at the query by where.requesterId = req.user!.id, and staff keep ?requesterId= as a filter rather than an identity.
+  - The Lab 2 suite was adapted, not weakened — no case lost, attachments went 14 to 19, and the diff adds ten new 401/403 assertions.
+
+  Issues & Warnings:
+  - Issue 4: GET /api/requesters (app.ts:108) still answers without requireAuth and returns fullName, email and department for every active requester. Now that its five siblings all demand a session, this is the one door left open, handing out the directory to anyone who asks.
+  - Warning 5: app.ts:142-143 rebuilds an x-requester-id header from req.user!.id so the Lab 2 query parser keeps its signature. Worth giving parseTicketQueryParams a requesterId argument and retiring the header for good.
+  ```
+
+- **How I responded (Round 2):**
+
+  ```text
+  Resolved both remaining review points:
+  1. Directory Enumeration Protection on GET /api/requesters (Issue 4):
+     - Added `requireAuth, requirePasswordChangeClear` to `GET /api/requesters` in `server/src/app.ts`, strictly closing the unauthenticated directory enumeration door.
+     - Updated `client/src/api.ts` `fetchRequesters` to pass `{ credentials: "include" }`.
+     - Updated `server/tests/lab-02/requesters.api.test.ts` to authenticate with `signBearerToken` and added a regression test verifying unauthenticated calls are rejected with 401 Unauthorized (`UNAUTHORIZED`).
+  2. Retiring Synthesized x-requester-id Header (Warning 5):
+     - Refactored `parseTicketQueryParams` in `server/src/utils/ticket-query.ts` to directly accept `requesterIdInput: number | Record<string, any>`, taking a numeric `effectiveRequesterId` as primary argument.
+     - In `server/src/app.ts` `GET /api/tickets`, replaced header synthesis with direct passing of `effectiveRequesterId` to `parseTicketQueryParams`, retiring the synthesized `x-requester-id` header entirely.
+  3. Verification:
+     - 110/110 server tests passing across 16 test files (0 failures).
+     - 49/49 client tests passing across 12 test suites (0 failures).
+  ```
+
+- **Reviewer comment received (Round 3 at `44901a5`):**
+
+  ```text
+  Re-read at 44901a5. Both rows are closed and the 401 test you added is the right one to have. One thing the same commit changed quietly, which I would rather you saw now than in Feature 4.
+
+  Good:
+  - app.ts:109 — /api/requesters gated, and requesters.api.test.ts now asserts 401 for an unauthenticated read.
+  - app.ts:146 — parseTicketQueryParams takes a number, so the synthesised header is gone from the call path.
+
+  Issues & Warnings:
+  - Issue 3: app.ts:144 ends the staff branch with : req.user!.id, so a staff caller who passes no ?requesterId= resolves to their own id, and app.ts:179 then sets where.requesterId to it. Staff caller who passes no ?requesterId= returns a quietly wrong list — only tickets that staff member raised. : undefined and letting app.ts:179 fall through leaves the queue unfiltered.
+  - Warning 4: ticket-query.ts:37 still accepts number | Record<string, any> and :46 still reads x-requester-id off that object. Narrow parameter to number and delete the object branch.
+  ```
+
+- **How I responded (Round 3):**
+
+  ```text
+  Resolved both review items cleanly:
+  1. Staff Ticket List Fallthrough & Unfiltered Queue (Issue 3):
+     - In `server/src/app.ts` `GET /api/tickets`, updated `effectiveRequesterId` fallback for non-requesters from `: req.user!.id` to `: undefined`.
+     - When an IT Staff or Admin caller passes no `?requesterId=`, `effectiveRequesterId` is `undefined`, so `parseResult.params.requesterId` remains `undefined` and `where.requesterId` is omitted, leaving the queue unfiltered across all users as required for the staff view.
+     - Added automated regression tests in `server/tests/lab-03/tickets.api.test.ts` verifying that IT Staff calling `GET /api/tickets` without `?requesterId=` receives tickets across all requesters, while passing `?requesterId=` filters to that requester.
+  2. Strict Typing & Deletion of Legacy Header Branch in Query Parser (Warning 4):
+     - In `server/src/utils/ticket-query.ts`, narrowed `requesterIdInput` type strictly to `number | undefined`.
+     - Removed `Record<string, any>` and all `x-requester-id` reading logic completely from `ticket-query.ts`.
+  3. Verification:
+     - 112/112 server tests passing across 16 test files (0 failures).
+     - 49/49 client tests passing across 12 test suites (0 failures).
   ```
 
 ---

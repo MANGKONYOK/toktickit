@@ -8,6 +8,7 @@ import {
   type TicketStatus,
 } from "../api.js";
 import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 
 interface MyTicketsProps {
   onNavigateToCreateTicket?: () => void;
@@ -19,6 +20,7 @@ export default function MyTickets({
   onSelectTicket,
 }: MyTicketsProps) {
   const { currentRequester } = useRequester();
+  const { user } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -49,7 +51,7 @@ export default function MyTickets({
       .catch((err) => console.error("Failed to load categories for filter:", err));
   }, []);
 
-  const currentRequesterId = currentRequester?.id;
+  const currentRequesterId = user ? user.id : currentRequester?.id;
 
   // Fetch tickets whenever context or query controls change
   const loadTickets = useCallback(async () => {
