@@ -314,19 +314,24 @@ To evolve the Lab 2 database into the Lab 3 multi-role architecture without data
 
 Default initial password: `Password@2026` (hashed with `bcrypt`, work factor 10).
 
-- **Requesters (4 Active, 1 Inactive):**
-  1. `sorawit.chaithong@email.com` (`mustChangePassword: false`, Active)
-  2. `jane.doe@email.com` (`mustChangePassword: false`, Active)
-  3. `bob.smith@email.com` (`mustChangePassword: true`, Active — For first-login password test)
-  4. `alice.johnson@email.com` (`mustChangePassword: false`, Active)
-  5. `alexanders.inactive@email.com` (`isActive: false`, Inactive — For login rejection test)
-- **IT Staff (3 Active, 1 Inactive):**
-  1. `piti.srisongkram@email.com` (`mustChangePassword: false`, Active)
-  2. `somchai.it@email.com` (`mustChangePassword: false`, Active)
-  3. `wichai.it@email.com` (`mustChangePassword: false`, Active)
-  4. `charlie.it.inactive@email.com` (`isActive: false`, Inactive)
+The seed provisions **13 accounts** (10 Active, 3 Inactive). The first 5 accounts maintain strict 1:1 ID and sequence alignment with Lab 2's `RequesterUser` table (Sorawit, Piti, John Doe, Jane Doe, Alexanders), followed by Lab 3 specialized role test accounts:
+
+- **Requesters (6 Active, 2 Inactive):**
+  1. `sorawit.chaithong@email.com` (`mustChangePassword: false`, Active — ID 1, Lab 2 & Lab 3 primary requester)
+  2. `john.doe@email.com` (`mustChangePassword: false`, Active — ID 3, Lab 2 ownership isolation tests)
+  3. `jane.doe@email.com` (`mustChangePassword: false`, Active — ID 4, Lab 2 & Lab 3 requester)
+  4. `alexanders.aleisters@email.com` (`isActive: false`, Inactive — ID 5, Lab 2 inactive requester)
+  5. `alexanders.inactive@email.com` (`isActive: false`, Inactive — Lab 3 login rejection test)
+  6. `bob.smith@email.com` (`mustChangePassword: true`, Active — Lab 3 first-login password change gate)
+  7. `alice.johnson@email.com` (`mustChangePassword: false`, Active — Lab 3 requester scenario)
+- **IT Staff (3 Active + 1 legacy alias, 1 Inactive):**
+  1. `piti.srisongkram@gmail.com` (`mustChangePassword: false`, Active — ID 2, Lab 2 legacy alias)
+  2. `piti.srisongkram@email.com` (`mustChangePassword: false`, Active — Lab 3 primary IT Staff)
+  3. `somchai.it@email.com` (`mustChangePassword: false`, Active — Lab 3 IT Staff)
+  4. `wichai.it@email.com` (`mustChangePassword: false`, Active — Lab 3 IT Staff)
+  5. `charlie.it.inactive@email.com` (`isActive: false`, Inactive — Lab 3 inactive staff)
 - **Administrator (1 Active):**
-  1. `admin.toktickit@email.com` (`mustChangePassword: false`, Active)
+  1. `admin.toktickit@email.com` (`mustChangePassword: false`, Active — Lab 3 primary Administrator)
 
 ---
 

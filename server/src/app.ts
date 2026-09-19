@@ -33,14 +33,9 @@ app.use(
 app.use(cookieParser(SESSION_SECRET));
 app.use(express.json());
 
-// Helper to resolve requester identity across both Lab 3 User model and Lab 2 RequesterUser model.
-// Prioritizes active User (where Ticket.requesterId foreign key points) with fallback to RequesterUser.
+// Helper to resolve active requester identity against the User model (Ticket.requesterId foreign key target).
 async function findActiveRequester(prisma: ReturnType<typeof getPrisma>, requesterId: number) {
-  const user = await prisma.user.findFirst({
-    where: { id: requesterId, isActive: true },
-  });
-  if (user) return user;
-  return await prisma.requesterUser.findFirst({
+  return await prisma.user.findFirst({
     where: { id: requesterId, isActive: true },
   });
 }

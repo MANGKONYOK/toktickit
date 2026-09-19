@@ -44,7 +44,11 @@ export function verifyBearerToken(token: string): { userId: number; role?: strin
   if (parts.length !== 2) return null;
   const [b64Payload, signature] = parts;
   const expectedSignature = crypto.createHmac("sha256", SESSION_SECRET).update(b64Payload).digest("base64url");
-  if (signature !== expectedSignature) return null;
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return null;
+  }
   try {
     const jsonStr = Buffer.from(b64Payload, "base64url").toString("utf-8");
     return JSON.parse(jsonStr);

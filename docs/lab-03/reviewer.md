@@ -92,10 +92,10 @@
   Resolved all peer review findings comprehensively:
   1. Cryptographic Session Verification (Issue 4):
      - Dropped unsigned `req.cookies` fallback in `server/src/middleware/auth.ts`, strictly requiring signed cookies (`req.signedCookies[SESSION_COOKIE_NAME]`).
-     - Implemented `signBearerToken` and `verifyBearerToken` using HMAC-SHA256 keyed with `SESSION_SECRET`, strictly rejecting unverified/forged Bearer payloads.
+     - Implemented `signBearerToken` and `verifyBearerToken` using HMAC-SHA256 keyed with `SESSION_SECRET`, using constant-time `crypto.timingSafeEqual` comparison to prevent timing attacks.
      - Added 3 automated security tests in `auth.api.test.ts` verifying that unsigned forged cookies and invalid Bearer signatures are rejected with 401 Unauthorized.
   2. Multi-Table Requester Resolution & Sequence Alignment (Issue 5):
-     - Added `findActiveRequester` helper in `server/src/app.ts` and updated all 7 Lab 2 ticket/attachment endpoints to check `prisma.user` first before falling back to `prisma.requesterUser`.
+     - Added `findActiveRequester` in `server/src/app.ts` resolving directly against `prisma.user` (where `Ticket.requesterId` points) so non-existent IDs 404 cleanly without foreign key mismatch.
      - Synchronized initial seed ordering in `server/prisma/seed.ts` so `User` and `RequesterUser` match 1:1 on IDs 1..5.
   3. True Seed Idempotency (Issue 6):
      - Updated `seed.ts` so that on `update`, `User.upsert` preserves `passwordHash`, `mustChangePassword`, and `isActive` intact.
@@ -103,7 +103,7 @@
      - Removed destructive `prisma.requesterUser.deleteMany()`.
   4. Cookie Flags & Account Count (Issue 7):
      - Added `secure: process.env.NODE_ENV === "production"` to `POST /api/auth/login` session cookie options.
-     - Clarified the 10 core accounts (8 active, 2 inactive) in `specification.md`.
+     - Synchronized `specification.md` §8.3 to accurately document all 13 provisioned accounts (10 active, 3 inactive) including Lab 2 compatibility accounts.
   5. Schema Documentation Synchronization (Issue 8):
      - Updated `Attachment` model definition in `docs/lab-03/specification.md` §8.1 to match `schema.prisma` exactly (`fileName`, `fileSize`, `filePath`, `uploadedAt`, `removedAt`, `removalReason`).
   ```
