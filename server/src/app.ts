@@ -1,19 +1,36 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import multer from "multer";
 import fs from "fs";
+import { Role } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticket-number.js";
 import { validateTicketInput, PriorityType } from "./utils/ticket-validation.js";
 import { parseTicketQueryParams } from "./utils/ticket-query.js";
 import { uploadMiddleware } from "./utils/upload.js";
+import {
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole,
+  SESSION_COOKIE_NAME,
+  SESSION_SECRET,
+} from "./middleware/auth.js";
+import { validatePasswordComplexity } from "./utils/password-validator.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+app.use(cookieParser(SESSION_SECRET));
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
@@ -818,6 +835,251 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — POST /api/auth/login
+// ---------------------------------------------------------------------------
+app.post("/api/auth/login", async (req: Request, res: Response) => {
+  const correlationId = randomUUID();
+  try {
+    const { email, password } = req.body;
+    if (!email || !password || typeof email !== "string" || typeof password !== "string") {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Email and password are required.",
+          fieldErrors: {
+            ...(!email ? { email: "Email is required." } : {}),
+            ...(!password ? { password: "Password is required." } : {}),
+          },
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await getPrisma().user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      // Dummy compare to avoid timing leak
+      await bcrypt.compare(password, "$2b$10$ep5w1/bB3Xq1b/0hQZk.teH.w2KjG6i.fKq1G3aP7U7xXjT8a6bCy");
+      res.status(401).json({
+        error: {
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid email or password.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Password must be verified BEFORE checking isActive (BR-04 / AC-03 anti-enumeration)
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      res.status(401).json({
+        error: {
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid email or password.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Only if password is correct, check active status
+    if (!user.isActive) {
+      res.status(403).json({
+        error: {
+          code: "ACCOUNT_INACTIVE",
+          message: "Account is inactive. Please contact the system administrator.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Set signed HTTP-only cookie
+    const sessionPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    res.cookie(SESSION_COOKIE_NAME, JSON.stringify(sessionPayload), {
+      httpOnly: true,
+      signed: true,
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    });
+
+    res.status(200).json({
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.mustChangePassword,
+        department: user.department,
+      },
+      message: "Login successful.",
+    });
+  } catch (err) {
+    console.error("POST /api/auth/login failed:", err);
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "An unexpected error occurred during login.",
+        correlationId,
+      },
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — POST /api/auth/logout
+// ---------------------------------------------------------------------------
+app.post("/api/auth/logout", requireAuth, (_req: Request, res: Response) => {
+  res.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+  res.status(200).json({
+    message: "Logout successful.",
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — GET /api/auth/me
+// ---------------------------------------------------------------------------
+app.get("/api/auth/me", requireAuth, (req: Request, res: Response) => {
+  res.status(200).json({
+    user: {
+      id: req.user!.id,
+      fullName: req.user!.fullName,
+      email: req.user!.email,
+      role: req.user!.role,
+      mustChangePassword: req.user!.mustChangePassword,
+      department: req.user!.department,
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lab 3 Endpoint — POST /api/auth/change-password
+// ---------------------------------------------------------------------------
+app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Response) => {
+  const correlationId = randomUUID();
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Current password, new password, and confirmation are required.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({
+        error: {
+          code: "PASSWORD_MISMATCH",
+          message: "New password and confirmation do not match.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const complexity = validatePasswordComplexity(newPassword);
+    if (!complexity.isValid) {
+      res.status(400).json({
+        error: {
+          code: "PASSWORD_COMPLEXITY_FAILED",
+          message: complexity.errors.join(" "),
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const user = await getPrisma().user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user) {
+      res.status(401).json({
+        error: {
+          code: "UNAUTHORIZED",
+          message: "User not found.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentValid) {
+      res.status(401).json({
+        error: {
+          code: "INVALID_CURRENT_PASSWORD",
+          message: "Current password is incorrect.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await getPrisma().user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: newHash,
+        mustChangePassword: false,
+      },
+    });
+
+    res.status(200).json({
+      message: "Password changed successfully.",
+    });
+  } catch (err) {
+    console.error("POST /api/auth/change-password failed:", err);
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Failed to change password.",
+        correlationId,
+      },
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 3 RBAC Endpoints for Staff & Admin Queue
+// ---------------------------------------------------------------------------
+app.get(
+  "/api/staff/tickets",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (_req: Request, res: Response) => {
+    res.status(200).json({ tickets: [] });
+  }
+);
+
+app.get(
+  "/api/admin/users",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.ADMIN),
+  async (_req: Request, res: Response) => {
+    res.status(200).json({ users: [] });
+  }
+);
 
 // ---------------------------------------------------------------------------
 // Global Error Handling Middleware (Express error middleware for malformed JSON, Multer & unhandled exceptions)

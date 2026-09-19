@@ -2,18 +2,23 @@ import { useState } from "react";
 import * as api from "./api.js";
 import type { Category } from "./api.js";
 import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
-import Navbar from "./components/Navbar.js";
+import { AuthProvider, useAuth } from "./context/AuthContext.js";
+import Navbar, { NavTab } from "./components/Navbar.js";
 import RequesterSelector from "./components/RequesterSelector.js";
 import CreateTicket from "./components/CreateTicket.js";
 import MyTickets from "./components/MyTickets.js";
 import TicketDetail from "./components/TicketDetail.js";
+import Login from "./components/Login.js";
+import ChangePasswordModal from "./components/ChangePasswordModal.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
 function MainContent() {
   const { currentRequester, isSelectorOpen } = useRequester();
-  const [activeTab, setActiveTab] = useState<"my-tickets" | "create-ticket">("my-tickets");
+  const { user, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<NavTab>("my-tickets");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
   // Preserved Lab 1 capability for system status check and regression test suite
   const [state, setState] = useState<UiState>("idle");
@@ -33,6 +38,9 @@ function MainContent() {
     }
   }
 
+  // Intercept if first-login password change is required (AC-04)
+  const isPasswordChangeRequired = !!(user && user.mustChangePassword);
+
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "var(--color-bg-page)" }}>
       <Navbar
@@ -41,8 +49,41 @@ function MainContent() {
           setSelectedTicketId(null);
           setActiveTab(tab);
         }}
+        onOpenLogin={() => setShowLoginModal(true)}
       />
       <RequesterSelector />
+
+      {/* Mandatory Password Change Modal */}
+      {isPasswordChangeRequired && (
+        <ChangePasswordModal isOpen={true} />
+      )}
+
+      {/* Login Screen / Modal */}
+      {showLoginModal && !user && (
+        <div
+          className="modal fade show d-block"
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1050 }}
+        >
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: "460px" }}>
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header border-0 pb-0">
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  onClick={() => setShowLoginModal(false)}
+                />
+              </div>
+              <div className="modal-body pt-0 px-4 pb-4">
+                <Login onSuccess={() => setShowLoginModal(false)} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="container flex-grow-1 pb-5" style={{ maxWidth: 1200 }}>
         {currentRequester && (
@@ -62,8 +103,31 @@ function MainContent() {
           </div>
         )}
 
-        {currentRequester && !isSelectorOpen && (
-          selectedTicketId !== null ? (
+        {/* Staff Queue Placeholder for Feature 3 */}
+        {activeTab === "staff-queue" && (
+          <div className="zen-card p-4 text-center" data-testid="staff-queue-placeholder">
+            <h4 className="fw-bold mb-2" style={{ color: "var(--color-primary, #006B3C)" }}>
+              IT Staff Ticket Queue
+            </h4>
+            <p className="text-muted small mb-0">Staff operational queue view will be active in Feature 3.</p>
+          </div>
+        )}
+
+        {/* Admin Users Placeholder for Feature 4 */}
+        {activeTab === "admin-users" && (
+          <div className="zen-card p-4 text-center" data-testid="admin-users-placeholder">
+            <h4 className="fw-bold mb-2" style={{ color: "var(--color-primary, #006B3C)" }}>
+              User Administration
+            </h4>
+            <p className="text-muted small mb-0">Administrator user management view will be active in Feature 4.</p>
+          </div>
+        )}
+
+        {/* Requester Ticketing Lifecycle (Preserved from Lab 2) */}
+        {(activeTab === "my-tickets" || activeTab === "create-ticket") &&
+          currentRequester &&
+          !isSelectorOpen &&
+          (selectedTicketId !== null ? (
             <TicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
           ) : activeTab === "create-ticket" ? (
             <CreateTicket onNavigateToMyTickets={() => setActiveTab("my-tickets")} />
@@ -72,8 +136,7 @@ function MainContent() {
               onNavigateToCreateTicket={() => setActiveTab("create-ticket")}
               onSelectTicket={(ticketId) => setSelectedTicketId(ticketId)}
             />
-          )
-        )}
+          ))}
 
         {/* Preserved Lab 1 System Diagnostics Section for Regression Verification */}
         <div className="zen-card p-4 mt-4 mb-4">
@@ -129,8 +192,10 @@ function MainContent() {
 
 export default function App() {
   return (
-    <RequesterProvider>
-      <MainContent />
-    </RequesterProvider>
+    <AuthProvider>
+      <RequesterProvider>
+        <MainContent />
+      </RequesterProvider>
+    </AuthProvider>
   );
 }

@@ -12,6 +12,7 @@
 | PR | Feature Branch | Target Branch | Scope / Feature Area | Reviewer Verdict |
 | :---: | :--- | :--- | :--- | :--- |
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
+| #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Pending Peer Review** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -54,6 +55,22 @@
   3. Enumeration oracle: Updated BR-04 to mandate that email and bcrypt password matching executes prior to inspecting account active status. Invalid credentials always return 401, completely closing the enumeration oracle.
   4. Schema & migration polish: Added Attachment model in specification.md §8.1 with uploadedById and removedById retargeting to User, clarified itPriority copying on creation (BR-13), documented Lab 2 Requester migration strategy in §8.2, and characterized migration as schema evolution in §11.2.
   ```
+
+#### PR #2 (`lab3-feature/2-auth-foundation`)
+
+- **Author implementation notes:**
+  - Evolved database schema from `RequesterUser` to `User`, adding `Role` enum, `Comment`, and `InternalNote` tables via migration `20260919114700_auth_foundation_and_user_model`.
+  - Retargeted foreign keys on `Ticket` and `Attachment` without data loss or renaming original columns.
+  - Implemented anti-enumeration defense ordering (verifying bcrypt password before inspecting active status, BR-04).
+  - Built session cookie middleware (`requireAuth`, `requirePasswordChangeClear`, `requireRole`) and endpoints (`POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/change-password`).
+  - Created client UI components (`Login.tsx`, `ChangePasswordModal.tsx`, `Navbar.tsx`, `AuthContext.tsx`).
+  - Automated test coverage: 100% pass across all 14 Feature 2 tests (`UNIT-01`, `MIG-01`, `API-01..09`, `UI-01..03`) and 61 Lab 2 regression tests.
+
+- **Reviewer comment received:**
+  *[Pending peer review from @kmood-Sakura on PR #2]*
+
+- **How I responded:**
+  *[To be populated after peer review feedback]*
 
 ---
 
