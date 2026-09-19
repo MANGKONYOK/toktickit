@@ -11,6 +11,8 @@ describe("Requester Ticket Operations (API-10, API-11, API-14 / AC-08, AC-09, AC
   let userBId: number;
   let userTokenA: string;
   let userTokenB: string;
+  let staffToken: string;
+  let adminToken: string;
   let userWithMustChangePasswordToken: string;
   let catHardwareId: number;
   let sysLaptopId: number;
@@ -24,6 +26,12 @@ describe("Requester Ticket Operations (API-10, API-11, API-14 / AC-08, AC-09, AC
     const userB = await prisma.user.findFirst({
       where: { email: "jane.doe@email.com", isActive: true },
     });
+    const staffUser = await prisma.user.findFirst({
+      where: { role: "IT_STAFF", isActive: true },
+    });
+    const adminUser = await prisma.user.findFirst({
+      where: { role: "ADMIN", isActive: true },
+    });
     const userMustChange = await prisma.user.findFirst({
       where: { email: "bob.smith@email.com", isActive: true },
     });
@@ -34,7 +42,7 @@ describe("Requester Ticket Operations (API-10, API-11, API-14 / AC-08, AC-09, AC
       where: { name: "Corporate Laptop", isActive: true },
     });
 
-    if (!userA || !userB || !userMustChange || !category || !system) {
+    if (!userA || !userB || !staffUser || !adminUser || !userMustChange || !category || !system) {
       throw new Error("Missing required seed data for tickets.api.test.ts");
     }
 
@@ -45,6 +53,8 @@ describe("Requester Ticket Operations (API-10, API-11, API-14 / AC-08, AC-09, AC
 
     userTokenA = signBearerToken({ userId: userA.id, role: userA.role });
     userTokenB = signBearerToken({ userId: userB.id, role: userB.role });
+    staffToken = signBearerToken({ userId: staffUser.id, role: staffUser.role });
+    adminToken = signBearerToken({ userId: adminUser.id, role: adminUser.role });
     userWithMustChangePasswordToken = signBearerToken({
       userId: userMustChange.id,
       role: userMustChange.role,
@@ -183,6 +193,28 @@ describe("Requester Ticket Operations (API-10, API-11, API-14 / AC-08, AC-09, AC
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe("PASSWORD_CHANGE_REQUIRED");
+    });
+
+    it("returns HTTP 403 when IT_STAFF or ADMIN attempts to indicate problem resolved (specification.md:133)", async () => {
+      const resStaff = await request(app)
+        .patch(`/api/tickets/${ticketUserAId}/resolve-indication`)
+        .set("Authorization", `Bearer ${staffToken}`)
+        .send({
+          comment: "IT Staff trying to indicate resolution",
+        });
+
+      expect(resStaff.status).toBe(403);
+      expect(resStaff.body.error.code).toBe("FORBIDDEN");
+
+      const resAdmin = await request(app)
+        .patch(`/api/tickets/${ticketUserAId}/resolve-indication`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          comment: "Admin trying to indicate resolution",
+        });
+
+      expect(resAdmin.status).toBe(403);
+      expect(resAdmin.body.error.code).toBe("FORBIDDEN");
     });
   });
 });

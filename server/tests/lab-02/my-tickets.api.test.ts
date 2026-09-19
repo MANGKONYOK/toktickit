@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { signBearerToken } from "../../src/middleware/auth.js";
 
 describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09, AC-10, FR-06, FR-07, FR-08)", () => {
   let userAId: number;
@@ -11,18 +12,21 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
   let catNetworkId: number;
   let systemLaptopId: number;
   let systemVpnId: number;
+  let tokenA: string;
+  let tokenB: string;
+  let inactiveToken: string;
 
   beforeAll(async () => {
     const prisma = getPrisma();
 
     // Fetch dedicated active test users (John Doe & Jane Doe) to avoid parallel conflict with create-ticket tests
-    const userA = await prisma.requesterUser.findFirst({
+    const userA = await prisma.user.findFirst({
       where: { email: "john.doe@email.com", isActive: true },
     });
-    const userB = await prisma.requesterUser.findFirst({
+    const userB = await prisma.user.findFirst({
       where: { email: "jane.doe@email.com", isActive: true },
     });
-    const inactive = await prisma.requesterUser.findFirst({
+    const inactive = await prisma.user.findFirst({
       where: { isActive: false },
     });
     const catHardware = await prisma.category.findFirst({
@@ -49,6 +53,10 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     catNetworkId = catNetwork.id;
     systemLaptopId = sysLaptop.id;
     systemVpnId = sysVpn.id;
+
+    tokenA = signBearerToken({ userId: userA.id, role: userA.role });
+    tokenB = signBearerToken({ userId: userB.id, role: userB.role });
+    inactiveToken = signBearerToken({ userId: inactive.id, role: inactive.role });
 
     // Clean any prior test tickets to guarantee predictable test counts and uniqueness
     await prisma.ticket.deleteMany({
@@ -131,10 +139,10 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
   // API-08: Multi-user Ownership Isolation (AC-03 / FR-06)
   // -------------------------------------------------------------------------
   describe("API-08: Multi-user Ownership Isolation", () => {
-    it("returns ONLY tickets belonging to the specified requesterId", async () => {
+    it("returns ONLY tickets belonging to the authenticated requester", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId });
+        .set("Authorization", `Bearer ${tokenA}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("tickets");
@@ -152,7 +160,7 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("returns ONLY User B tickets when requested by User B", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userBId });
+        .set("Authorization", `Bearer ${tokenB}`);
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(1);
@@ -160,22 +168,23 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
       expect(res.body.tickets[0].requesterId).toBe(userBId);
     });
 
-    it("supports requester identity via x-requester-id header fallback", async () => {
+    it("ignores legacy x-requester-id header in favor of session identity (FR-05, BR-06)", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .set("x-requester-id", String(userBId));
+        .set("Authorization", `Bearer ${tokenB}`)
+        .set("x-requester-id", String(userAId));
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(1);
       expect(res.body.tickets[0].requesterId).toBe(userBId);
     });
 
-    it("enforces header authority and prevents spoofing: sending User A's header with ?requesterId=User_B returns ONLY User A's tickets (AC-03)", async () => {
-      // User A (John Doe) sends authenticated/simulated header for User A,
+    it("enforces session authority and prevents spoofing: sending User A's session with ?requesterId=User_B returns ONLY User A's tickets (AC-03)", async () => {
+      // User A (John Doe) sends authenticated session for User A,
       // but maliciously appends query param ?requesterId=User_B (Jane Doe)
       const res = await request(app)
         .get("/api/tickets")
-        .set("x-requester-id", String(userAId))
+        .set("Authorization", `Bearer ${tokenA}`)
         .query({ requesterId: userBId });
 
       expect(res.status).toBe(200);
@@ -189,7 +198,7 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("omits sensitive requester email and department from list rows", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .set("x-requester-id", String(userAId));
+        .set("Authorization", `Bearer ${tokenA}`);
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBeGreaterThan(0);
@@ -201,28 +210,20 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
       expect(first.requester.department).toBeUndefined();
     });
 
-    it("returns 400 Bad Request when requesterId is missing", async () => {
+    it("returns 401 Unauthorized when unauthenticated", async () => {
       const res = await request(app).get("/api/tickets");
 
-      expect(res.status).toBe(400);
-      expect(res.body.error.code).toBe("VALIDATION_ERROR");
-      expect(res.body.error.fieldErrors).toHaveProperty("requesterId");
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
     });
 
-    it("returns 404 Not Found when requester does not exist or is inactive", async () => {
+    it("returns 401 Unauthorized when token belongs to inactive user", async () => {
       const resInactive = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: inactiveUserId });
+        .set("Authorization", `Bearer ${inactiveToken}`);
 
-      expect(resInactive.status).toBe(404);
-      expect(resInactive.body.error.code).toBe("NOT_FOUND");
-
-      const resNonExistent = await request(app)
-        .get("/api/tickets")
-        .query({ requesterId: 999999 });
-
-      expect(resNonExistent.status).toBe(404);
-      expect(resNonExistent.body.error.code).toBe("NOT_FOUND");
+      expect(resInactive.status).toBe(401);
+      expect(resInactive.body.error.code).toBe("UNAUTHORIZED");
     });
   });
 
@@ -233,7 +234,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("filters tickets by case-insensitive substring on summary", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, search: "vpn" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ search: "vpn" });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(1);
@@ -243,7 +245,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("filters tickets by substring on ticketNumber", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, search: "900003" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ search: "900003" });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(1);
@@ -253,7 +256,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("filters tickets by categoryId", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, categoryId: catHardwareId });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ categoryId: catHardwareId });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(2);
@@ -265,7 +269,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("filters tickets by requestedPriority", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, requestedPriority: "HIGH" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ requestedPriority: "HIGH" });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(1);
@@ -275,7 +280,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("filters tickets by currentStatus", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, status: "RESOLVED" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ status: "RESOLVED" });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets.length).toBe(1);
@@ -285,8 +291,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("filters tickets by combining Category + Priority + Status (multi-filter)", async () => {
       const resMatch = await request(app)
         .get("/api/tickets")
+        .set("Authorization", `Bearer ${tokenA}`)
         .query({
-          requesterId: userAId,
           categoryId: catHardwareId,
           requestedPriority: "HIGH",
           status: "NEW",
@@ -299,8 +305,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
       // No match when one criterion differs
       const resNoMatch = await request(app)
         .get("/api/tickets")
+        .set("Authorization", `Bearer ${tokenA}`)
         .query({
-          requesterId: userAId,
           categoryId: catHardwareId,
           requestedPriority: "URGENT",
           status: "NEW",
@@ -319,7 +325,7 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("sorts tickets by createdAt desc by default", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId });
+        .set("Authorization", `Bearer ${tokenA}`);
 
       expect(res.status).toBe(200);
       expect(res.body.tickets[0].ticketNumber).toBe("TKT-2026-900003"); // 2026-02-03
@@ -330,7 +336,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("sorts tickets by createdAt asc when sortOrder=asc", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, sortBy: "createdAt", sortOrder: "asc" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ sortBy: "createdAt", sortOrder: "asc" });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets[0].ticketNumber).toBe("TKT-2026-900001");
@@ -340,7 +347,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("sorts tickets by ticketNumber asc", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, sortBy: "ticketNumber", sortOrder: "asc" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ sortBy: "ticketNumber", sortOrder: "asc" });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets[0].ticketNumber).toBe("TKT-2026-900001");
@@ -352,7 +360,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
       // Page 1 with limit 2
       const resPage1 = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, page: 1, limit: 2, sortBy: "ticketNumber", sortOrder: "asc" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ page: 1, limit: 2, sortBy: "ticketNumber", sortOrder: "asc" });
 
       expect(resPage1.status).toBe(200);
       expect(resPage1.body.tickets.length).toBe(2);
@@ -368,7 +377,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
       // Page 2 with limit 2
       const resPage2 = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, page: 2, limit: 2, sortBy: "ticketNumber", sortOrder: "asc" });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ page: 2, limit: 2, sortBy: "ticketNumber", sortOrder: "asc" });
 
       expect(resPage2.status).toBe(200);
       expect(resPage2.body.tickets.length).toBe(1);
@@ -384,7 +394,8 @@ describe("GET /api/tickets (API-06, API-07, API-08 / AC-03, AC-07, AC-08, AC-09,
     it("handles out-of-range page gracefully by returning empty tickets array with valid total", async () => {
       const res = await request(app)
         .get("/api/tickets")
-        .query({ requesterId: userAId, page: 99, limit: 10 });
+        .set("Authorization", `Bearer ${tokenA}`)
+        .query({ page: 99, limit: 10 });
 
       expect(res.status).toBe(200);
       expect(res.body.tickets).toEqual([]);

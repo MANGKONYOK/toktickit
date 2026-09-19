@@ -13,7 +13,7 @@
 | :---: | :--- | :--- | :--- | :--- |
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
-| #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Under Review** |
+| #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -124,13 +124,38 @@
 - **Reviewer comment received:**
 
   ```text
-  [Pending review from @kmood-Sakura]
+  Read be2409e against lab3-staging — 12 files, +1356 −99. The three new endpoints are the careful part of this branch and I would keep all of them. One row blocks, and it is the one your own test plan already flinched at.
+
+  Good:
+  - app.ts:442 — ownership is a SQL where predicate, not a post-fetch check, with staff and admin on their own branch.
+  - app.ts:1120-1134 — resolve-indication writes only resolvedByRequester, leaves currentStatus alone and refuses CLOSED or CANCELLED with 400.
+  - app.ts:1055 — the comment author select is id, fullName, role, and neither comments handler touches internalNote.
+
+  Blocking Issues:
+  - Issue 4: The ticket routes still accept x-requester-id when no session is present. Unauthenticated calls to POST /api/tickets, GET /api/tickets, GET /api/tickets/:id, POST /api/tickets/:id/attachments, GET /api/tickets/:id/attachments, DELETE /api/attachments/:id, and GET /api/attachments/:id/download must return 401 Unauthorized per FR-05 & BR-06. Ticket identity must strictly bind to req.user.id.
+
+  Issues & Warnings:
+  - Issue 5: AC-08 reads Pass while the row that proves it was deleted. In tests.md line 37, API-10 was merged onto the same line as API-09 without a newline, hiding API-10 from Table 2.
+  - Warning 6: resolve-indication answers 404 where your matrix says 403. In specification.md:133, Indicate Problem Resolved is 403 for IT_STAFF and ADMIN, so role check must precede ticket ownership check.
   ```
 
 - **How I responded:**
 
   ```text
-  [Pending review response]
+  Resolved all peer review findings comprehensively:
+  1. Strict Authentication & Deprecation of Legacy Headers (Issue 4):
+     - Enforced `requireAuth, requirePasswordChangeClear` across all ticket and attachment routes (`POST /api/tickets`, `GET /api/tickets`, `GET /api/tickets/:id`, `POST /api/tickets/:id/attachments`, `GET /api/tickets/:id/attachments`, `DELETE /api/attachments/:id`, `GET /api/attachments/:id/download`).
+     - Unauthenticated requests strictly return HTTP 401 Unauthorized (`UNAUTHORIZED`).
+     - Completely eliminated `x-requester-id` and body/query `requesterId` identity fallbacks; ticket identity is strictly derived from authenticated session `req.user.id` (FR-05, BR-06).
+     - Re-aligned Lab 2 test suites (`create-ticket`, `my-tickets`, `ticket-detail`, `attachments`) using cryptographic session tokens (`signBearerToken`) and added regression tests ensuring unauthenticated calls receive 401 and legacy headers cannot spoof identity.
+  2. Table Formatting in tests.md (Issue 5):
+     - Separated `API-09` and `API-10` into two distinct markdown table rows with proper newlines in `docs/lab-03/tests.md`, restoring Table 2 rendering and verifying AC-08.
+  3. RBAC Matrix Alignment on Problem Resolution (Warning 6):
+     - Updated `PATCH /api/tickets/:id/resolve-indication` in `server/src/app.ts` to perform role verification first: non-requesters (`IT_STAFF`, `ADMIN`) receive HTTP 403 Forbidden (`FORBIDDEN`), matching the capability matrix in `specification.md:133`. Ownership verification follows, returning 404 for unowned tickets.
+     - Added automated tests in `server/tests/lab-03/tickets.api.test.ts` verifying 403 Forbidden for IT Staff and Admin callers.
+  4. Verification:
+     - 109/109 server tests passing across 16 test files (including all Lab 2 regression tests and Lab 3 auth/tickets/comments/notes suites).
+     - 49/49 client tests passing across 12 test suites.
   ```
 
 ---

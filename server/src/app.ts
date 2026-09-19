@@ -134,24 +134,13 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 // Lab 2 Endpoint 5 — GET /api/tickets
 // Retrieve selected requester's tickets with search, multi-filter, sorting & pagination
 // ---------------------------------------------------------------------------
-app.get("/api/tickets", async (req: Request, res: Response) => {
+app.get("/api/tickets", requireAuth, requirePasswordChangeClear, async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
-    const sessionUser = await authenticateSession(req);
-    if (sessionUser?.mustChangePassword) {
-      res.status(403).json({
-        error: {
-          code: "PASSWORD_CHANGE_REQUIRED",
-          message: "You must change your password before accessing this resource.",
-          correlationId,
-        },
-      });
-      return;
-    }
-
-    const queryHeaders = sessionUser
-      ? { ...req.headers, "x-requester-id": String(sessionUser.id) }
-      : req.headers;
+    const isRequester = req.user!.role === Role.REQUESTER;
+    const queryHeaders = isRequester
+      ? { ...req.headers, "x-requester-id": String(req.user!.id) }
+      : (req.query.requesterId ? { ...req.headers, "x-requester-id": String(req.query.requesterId) } : req.headers);
 
     const parseResult = parseTicketQueryParams(req.query, queryHeaders);
     if (!parseResult.isValid || !parseResult.params) {
@@ -168,7 +157,6 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
     }
 
     const {
-      requesterId,
       search,
       categoryId,
       requestedPriority,
@@ -182,25 +170,13 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
 
     const prisma = getPrisma();
 
-    // Verify requester exists and is active (ownership context)
-    const requester = await findActiveRequester(prisma, requesterId);
-
-    if (!requester) {
-      console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
-      res.status(404).json({
-        error: {
-          code: "NOT_FOUND",
-          message: "Active requester not found",
-          correlationId,
-        },
-      });
-      return;
+    // Build filter criteria: Requesters strictly scoped to their own session user ID (AC-09, FR-05)
+    const where: any = {};
+    if (isRequester) {
+      where.requesterId = req.user!.id;
+    } else if (parseResult.params.requesterId) {
+      where.requesterId = parseResult.params.requesterId;
     }
-
-    // Build filter criteria with strict ownership isolation (FR-06 / AC-03)
-    const where: any = {
-      requesterId: requester.id,
-    };
 
     if (categoryId) {
       where.categoryId = categoryId;
@@ -284,27 +260,12 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
 // Lab 2 Endpoint 4 — POST /api/tickets
 // Create support ticket with sequential ticketNumber and initial lifecycle state
 // ---------------------------------------------------------------------------
-app.post("/api/tickets", async (req: Request, res: Response) => {
+app.post("/api/tickets", requireAuth, requirePasswordChangeClear, async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
-    const sessionUser = await authenticateSession(req);
-    if (sessionUser?.mustChangePassword) {
-      res.status(403).json({
-        error: {
-          code: "PASSWORD_CHANGE_REQUIRED",
-          message: "You must change your password before accessing this resource.",
-          correlationId,
-        },
-      });
-      return;
-    }
-
-    // Support requester identity duality with session taking absolute precedence (AC-08)
-    const headerRequesterId = req.headers["x-requester-id"]
-      ? Number(req.headers["x-requester-id"])
-      : undefined;
-
-    const effectiveRequesterId = sessionUser?.id ?? headerRequesterId ?? req.body?.requesterId;
+    // Session identity strictly determines ticket requester (AC-08, BR-06, FR-05)
+    // Any client-provided identity header (x-requester-id) or body requesterId is ignored
+    const effectiveRequesterId = req.user!.id;
 
     const payload =
       req.body && typeof req.body === "object" && !Array.isArray(req.body)
@@ -409,7 +370,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 // Lab 2 Endpoint 6 — GET /api/tickets/:id
 // Retrieve complete details and attachments for a single ticket, strictly enforcing ownership (BR-08 / AC-13)
 // ---------------------------------------------------------------------------
-app.get("/api/tickets/:id", async (req: Request, res: Response) => {
+app.get("/api/tickets/:id", requireAuth, requirePasswordChangeClear, async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
     const ticketId = parseInt(req.params.id, 10);
@@ -420,85 +381,13 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
       return;
     }
 
-    const sessionUser = await authenticateSession(req);
-    if (sessionUser?.mustChangePassword) {
-      res.status(403).json({
-        error: {
-          code: "PASSWORD_CHANGE_REQUIRED",
-          message: "You must change your password before accessing this resource.",
-          correlationId,
-        },
-      });
-      return;
-    }
-
     const prisma = getPrisma();
     let ticket;
 
-    if (sessionUser) {
-      if (sessionUser.role === Role.REQUESTER) {
-        // Ownership applied directly as a SQL where predicate (AC-09: 404 for unowned tickets)
-        ticket = await prisma.ticket.findFirst({
-          where: { id: ticketId, requesterId: sessionUser.id },
-          include: {
-            requester: {
-              select: { id: true, fullName: true, email: true, department: true },
-            },
-            category: { select: { id: true, name: true } },
-            relatedSystem: { select: { id: true, name: true } },
-            attachments: { orderBy: { uploadedAt: "asc" } },
-          },
-        });
-      } else {
-        // Staff and Admin can view any ticket
-        ticket = await prisma.ticket.findFirst({
-          where: { id: ticketId },
-          include: {
-            requester: {
-              select: { id: true, fullName: true, email: true, department: true },
-            },
-            category: { select: { id: true, name: true } },
-            relatedSystem: { select: { id: true, name: true } },
-            attachments: { orderBy: { uploadedAt: "asc" } },
-          },
-        });
-      }
-
-      if (!ticket) {
-        res.status(404).json({
-          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
-        });
-        return;
-      }
-    } else {
-      // Legacy unauthenticated request: requires x-requester-id or query requesterId (Lab 2 compatibility)
-      const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
-      if (!requesterIdRaw) {
-        res.status(400).json({
-          error: { code: "VALIDATION_ERROR", message: "Requester identity is required", correlationId },
-        });
-        return;
-      }
-
-      const requesterId = parseInt(String(requesterIdRaw), 10);
-      if (isNaN(requesterId) || requesterId <= 0) {
-        res.status(400).json({
-          error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId },
-        });
-        return;
-      }
-
-      const requester = await findActiveRequester(prisma, requesterId);
-      if (!requester) {
-        console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
-        res.status(404).json({
-          error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
-        });
-        return;
-      }
-
+    if (req.user!.role === Role.REQUESTER) {
+      // Ownership applied directly as a SQL where predicate (AC-09: 404 for unowned tickets)
       ticket = await prisma.ticket.findFirst({
-        where: { id: ticketId, requesterId: requester.id },
+        where: { id: ticketId, requesterId: req.user!.id },
         include: {
           requester: {
             select: { id: true, fullName: true, email: true, department: true },
@@ -508,13 +397,26 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
           attachments: { orderBy: { uploadedAt: "asc" } },
         },
       });
+    } else {
+      // Staff and Admin can view any ticket
+      ticket = await prisma.ticket.findFirst({
+        where: { id: ticketId },
+        include: {
+          requester: {
+            select: { id: true, fullName: true, email: true, department: true },
+          },
+          category: { select: { id: true, name: true } },
+          relatedSystem: { select: { id: true, name: true } },
+          attachments: { orderBy: { uploadedAt: "asc" } },
+        },
+      });
+    }
 
-      if (!ticket) {
-        res.status(404).json({
-          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
-        });
-        return;
-      }
+    if (!ticket) {
+      res.status(404).json({
+        error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+      });
+      return;
     }
 
     const activeAttachments = ticket.attachments
@@ -578,98 +480,83 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
 // Lab 2 Endpoint 7 — POST /api/tickets/:id/attachments
 // Upload an attachment to an existing ticket (AC-14..16, BR-09..10)
 // ---------------------------------------------------------------------------
-app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async (req: Request, res: Response) => {
-  const correlationId = `req-${randomUUID()}`;
-  try {
-    const ticketId = parseInt(req.params.id, 10);
-    if (isNaN(ticketId) || ticketId <= 0) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId } });
-      return;
-    }
+app.post(
+  "/api/tickets/:id/attachments",
+  requireAuth,
+  requirePasswordChangeClear,
+  uploadMiddleware.single("file"),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    try {
+      const ticketId = parseInt(req.params.id, 10);
+      if (isNaN(ticketId) || ticketId <= 0) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId } });
+        return;
+      }
 
-    // Header identity takes absolute precedence over multipart body
-    const requesterIdRaw = req.headers["x-requester-id"] ?? req.body?.requesterId;
-    if (!requesterIdRaw) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Requester identity is required", correlationId } });
-      return;
-    }
+      if (!req.file) {
+        res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Attachment file is required", correlationId } });
+        return;
+      }
 
-    const requesterId = parseInt(String(requesterIdRaw), 10);
-    if (isNaN(requesterId) || requesterId <= 0) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
-      return;
-    }
+      const prisma = getPrisma();
 
-    if (!req.file) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Attachment file is required", correlationId } });
-      return;
-    }
+      // For Requesters, enforce ownership directly via SQL predicate (BR-08)
+      const ticketWhere: any = { id: ticketId };
+      if (req.user!.role === Role.REQUESTER) {
+        ticketWhere.requesterId = req.user!.id;
+      }
 
-    const prisma = getPrisma();
-
-    // Verify requester exists and is active before querying ticket
-    const requester = await findActiveRequester(prisma, requesterId);
-    if (!requester) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
-      });
-      return;
-    }
-
-    // Strict ownership applied directly as a SQL where predicate (BR-08)
-    const ticket = await prisma.ticket.findFirst({
-      where: { id: ticketId, requesterId: requester.id },
-      include: {
-        attachments: {
-          where: { removedAt: null },
-        },
-      },
-    });
-
-    if (!ticket) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(404).json({ error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId } });
-      return;
-    }
-
-    // Enforce 5 active attachments cap (BR-10 / AC-16)
-    if (ticket.attachments.length >= 5) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(409).json({
-        error: {
-          code: "ATTACHMENT_LIMIT_EXCEEDED",
-          message: "Maximum 5 active attachments allowed per ticket",
-          correlationId,
+      const ticket = await prisma.ticket.findFirst({
+        where: ticketWhere,
+        include: {
+          attachments: {
+            where: { removedAt: null },
+          },
         },
       });
-      return;
-    }
 
-    const attachment = await prisma.attachment.create({
-      data: {
-        ticketId: ticket.id,
-        fileName: req.file.originalname,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        fileSize: req.file.size,
-        filePath: req.file.path,
-        uploadedById: requester.id,
-      },
-    });
+      if (!ticket) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(404).json({ error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId } });
+        return;
+      }
 
-    res.status(201).json({
-      id: attachment.id,
-      ticketId: attachment.ticketId,
-      fileName: attachment.fileName,
-      originalName: attachment.originalName,
-      fileSize: attachment.fileSize,
-      mimeType: attachment.mimeType,
-      uploadedAt: attachment.uploadedAt,
-    });
+      // Enforce 5 active attachments cap (BR-10 / AC-16)
+      if (ticket.attachments.length >= 5) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(409).json({
+          error: {
+            code: "ATTACHMENT_LIMIT_EXCEEDED",
+            message: "Maximum 5 active attachments allowed per ticket",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const attachment = await prisma.attachment.create({
+        data: {
+          ticketId: ticket.id,
+          fileName: req.file.originalname,
+          originalName: req.file.originalname,
+          mimeType: req.file.mimetype,
+          fileSize: req.file.size,
+          filePath: req.file.path,
+          uploadedById: req.user!.id,
+        },
+      });
+
+      res.status(201).json({
+        id: attachment.id,
+        ticketId: attachment.ticketId,
+        fileName: attachment.fileName,
+        originalName: attachment.originalName,
+        fileSize: attachment.fileSize,
+        mimeType: attachment.mimeType,
+        uploadedAt: attachment.uploadedAt,
+      });
   } catch (error) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     console.error(`[${correlationId}] Failed to upload attachment:`, error);
@@ -683,36 +570,25 @@ app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async 
 // Lab 2 Endpoint 8 — GET /api/tickets/:id/attachments
 // Retrieve attachment metadata list (active and soft-removed) for a ticket
 // ---------------------------------------------------------------------------
-app.get("/api/tickets/:id/attachments", async (req: Request, res: Response) => {
+app.get("/api/tickets/:id/attachments", requireAuth, requirePasswordChangeClear, async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
     const ticketId = parseInt(req.params.id, 10);
-    // Header identity takes absolute precedence over query parameter
-    const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
-    if (isNaN(ticketId) || !requesterIdRaw) {
+    if (isNaN(ticketId) || ticketId <= 0) {
       res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters", correlationId } });
-      return;
-    }
-    const requesterId = parseInt(String(requesterIdRaw), 10);
-    if (isNaN(requesterId) || requesterId <= 0) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
       return;
     }
 
     const prisma = getPrisma();
 
-    // Verify requester exists and is active before querying ticket
-    const requester = await findActiveRequester(prisma, requesterId);
-    if (!requester) {
-      res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
-      });
-      return;
+    // Strict ownership applied directly as a SQL where predicate (BR-08 / AC-09)
+    const ticketWhere: any = { id: ticketId };
+    if (req.user!.role === Role.REQUESTER) {
+      ticketWhere.requesterId = req.user!.id;
     }
 
-    // Strict ownership applied directly as a SQL where predicate (BR-08)
     const ticket = await prisma.ticket.findFirst({
-      where: { id: ticketId, requesterId: requester.id },
+      where: ticketWhere,
       include: {
         attachments: { orderBy: { uploadedAt: "asc" } },
       },
@@ -761,39 +637,24 @@ app.get("/api/tickets/:id/attachments", async (req: Request, res: Response) => {
 // Lab 2 Endpoint 9 — GET /api/attachments/:id/download
 // Download active attachment stream. Rejects soft-removed files with 410 Gone (AC-18, BR-12)
 // ---------------------------------------------------------------------------
-app.get("/api/attachments/:id/download", async (req: Request, res: Response) => {
+app.get("/api/attachments/:id/download", requireAuth, requirePasswordChangeClear, async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
     const attachmentId = parseInt(req.params.id, 10);
-    // Header identity takes absolute precedence over query parameter
-    const requesterIdRaw = req.headers["x-requester-id"] ?? req.query.requesterId;
-    if (isNaN(attachmentId) || !requesterIdRaw) {
+    if (isNaN(attachmentId) || attachmentId <= 0) {
       res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters", correlationId } });
-      return;
-    }
-    const requesterId = parseInt(String(requesterIdRaw), 10);
-    if (isNaN(requesterId) || requesterId <= 0) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
       return;
     }
 
     const prisma = getPrisma();
 
-    // Verify requester exists and is active before querying attachment
-    const requester = await findActiveRequester(prisma, requesterId);
-    if (!requester) {
-      res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
-      });
-      return;
+    const attachmentWhere: any = { id: attachmentId };
+    if (req.user!.role === Role.REQUESTER) {
+      attachmentWhere.ticket = { requesterId: req.user!.id };
     }
 
-    // Strict ownership applied directly as a SQL where predicate through relation (BR-08)
     const attachment = await prisma.attachment.findFirst({
-      where: {
-        id: attachmentId,
-        ticket: { requesterId: requester.id },
-      },
+      where: attachmentWhere,
       include: { ticket: true },
     });
 
@@ -832,21 +693,14 @@ app.get("/api/attachments/:id/download", async (req: Request, res: Response) => 
 // Lab 2 Endpoint 10 — DELETE /api/attachments/:id
 // Soft-remove an active attachment with mandatory reason (AC-17, BR-11)
 // ---------------------------------------------------------------------------
-app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
+app.delete("/api/attachments/:id", requireAuth, requirePasswordChangeClear, async (req: Request, res: Response) => {
   const correlationId = `req-${randomUUID()}`;
   try {
     const attachmentId = parseInt(req.params.id, 10);
-    // Header identity takes absolute precedence over request body to prevent tenant spoofing
-    const requesterIdRaw = req.headers["x-requester-id"] ?? req.body?.requesterId;
     const reason = req.body?.reason;
 
-    if (isNaN(attachmentId) || !requesterIdRaw) {
+    if (isNaN(attachmentId) || attachmentId <= 0) {
       res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request parameters", correlationId } });
-      return;
-    }
-    const requesterId = parseInt(String(requesterIdRaw), 10);
-    if (isNaN(requesterId) || requesterId <= 0) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Invalid requester ID", correlationId } });
       return;
     }
 
@@ -865,21 +719,13 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
 
     const prisma = getPrisma();
 
-    // Verify requester exists and is active before querying attachment
-    const requester = await findActiveRequester(prisma, requesterId);
-    if (!requester) {
-      res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
-      });
-      return;
+    const attachmentWhere: any = { id: attachmentId };
+    if (req.user!.role === Role.REQUESTER) {
+      attachmentWhere.ticket = { requesterId: req.user!.id };
     }
 
-    // Strict ownership applied directly as a SQL where predicate through relation (BR-08)
     const attachment = await prisma.attachment.findFirst({
-      where: {
-        id: attachmentId,
-        ticket: { requesterId: requester.id },
-      },
+      where: attachmentWhere,
     });
 
     if (!attachment) {
@@ -889,23 +735,29 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
 
     if (attachment.removedAt !== null) {
       res.status(409).json({
-        error: { code: "ALREADY_REMOVED", message: "Attachment is already removed", correlationId },
+        error: {
+          code: "ALREADY_REMOVED",
+          message: "Attachment has already been removed",
+          correlationId,
+        },
       });
       return;
     }
 
     const updated = await prisma.attachment.update({
-      where: { id: attachment.id },
+      where: { id: attachmentId },
       data: {
         removedAt: new Date(),
-        removedById: requester.id,
+        removedById: req.user!.id,
         removalReason: reason.trim(),
       },
     });
 
     res.status(200).json({
       id: updated.id,
+      ticketId: updated.ticketId,
       fileName: updated.fileName,
+      originalName: updated.originalName,
       removedAt: updated.removedAt,
       removedById: updated.removedById,
       removalReason: updated.removalReason,
@@ -914,7 +766,7 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(`[${correlationId}] Failed to soft-remove attachment:`, error);
     res.status(500).json({
-      error: { code: "INTERNAL_ERROR", message: "Failed to remove attachment", correlationId },
+      error: { code: "INTERNAL_ERROR", message: "Failed to soft-remove attachment", correlationId },
     });
   }
 });
@@ -1092,6 +944,18 @@ app.patch(
       if (isNaN(ticketId) || ticketId <= 0) {
         res.status(400).json({
           error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
+        });
+        return;
+      }
+
+      // Role check: Only Requesters can indicate problem resolution per specification.md:133 (Denied 403 for Staff/Admin)
+      if (req.user!.role !== Role.REQUESTER) {
+        res.status(403).json({
+          error: {
+            code: "FORBIDDEN",
+            message: "Only requesters can indicate problem resolution on tickets.",
+            correlationId,
+          },
         });
         return;
       }
