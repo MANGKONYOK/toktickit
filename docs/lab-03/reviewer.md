@@ -189,6 +189,36 @@
      - 49/49 client tests passing across 12 test suites (0 failures).
   ```
 
+- **Reviewer comment received (Round 3 at `44901a5`):**
+
+  ```text
+  Re-read at 44901a5. Both rows are closed and the 401 test you added is the right one to have. One thing the same commit changed quietly, which I would rather you saw now than in Feature 4.
+
+  Good:
+  - app.ts:109 — /api/requesters gated, and requesters.api.test.ts now asserts 401 for an unauthenticated read.
+  - app.ts:146 — parseTicketQueryParams takes a number, so the synthesised header is gone from the call path.
+
+  Issues & Warnings:
+  - Issue 3: app.ts:144 ends the staff branch with : req.user!.id, so a staff caller who passes no ?requesterId= resolves to their own id, and app.ts:179 then sets where.requesterId to it. Staff caller who passes no ?requesterId= returns a quietly wrong list — only tickets that staff member raised. : undefined and letting app.ts:179 fall through leaves the queue unfiltered.
+  - Warning 4: ticket-query.ts:37 still accepts number | Record<string, any> and :46 still reads x-requester-id off that object. Narrow parameter to number and delete the object branch.
+  ```
+
+- **How I responded (Round 3):**
+
+  ```text
+  Resolved both review items cleanly:
+  1. Staff Ticket List Fallthrough & Unfiltered Queue (Issue 3):
+     - In `server/src/app.ts` `GET /api/tickets`, updated `effectiveRequesterId` fallback for non-requesters from `: req.user!.id` to `: undefined`.
+     - When an IT Staff or Admin caller passes no `?requesterId=`, `effectiveRequesterId` is `undefined`, so `parseResult.params.requesterId` remains `undefined` and `where.requesterId` is omitted, leaving the queue unfiltered across all users as required for the staff view.
+     - Added automated regression tests in `server/tests/lab-03/tickets.api.test.ts` verifying that IT Staff calling `GET /api/tickets` without `?requesterId=` receives tickets across all requesters, while passing `?requesterId=` filters to that requester.
+  2. Strict Typing & Deletion of Legacy Header Branch in Query Parser (Warning 4):
+     - In `server/src/utils/ticket-query.ts`, narrowed `requesterIdInput` type strictly to `number | undefined`.
+     - Removed `Record<string, any>` and all `x-requester-id` reading logic completely from `ticket-query.ts`.
+  3. Verification:
+     - 112/112 server tests passing across 16 test files (0 failures).
+     - 49/49 client tests passing across 12 test suites (0 failures).
+  ```
+
 ---
 
 ## Pull Requests I Reviewed for My Partner (@kmood-Sakura)

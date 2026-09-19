@@ -217,4 +217,30 @@ describe("Requester Ticket Operations (API-10, API-11, API-14 / AC-08, AC-09, AC
       expect(resAdmin.body.error.code).toBe("FORBIDDEN");
     });
   });
+
+  describe("Role-based Ticket List Scoping (GET /api/tickets)", () => {
+    it("returns all tickets across requesters for IT Staff without requesterId filter", async () => {
+      const res = await request(app)
+        .get("/api/tickets")
+        .set("Authorization", `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.tickets.length).toBeGreaterThan(0);
+      const requesterIds = res.body.tickets.map((t: any) => t.requesterId);
+      expect(requesterIds).toContain(userAId);
+    });
+
+    it("allows IT Staff to filter tickets by specific requesterId query parameter", async () => {
+      const res = await request(app)
+        .get("/api/tickets")
+        .set("Authorization", `Bearer ${staffToken}`)
+        .query({ requesterId: userAId });
+
+      expect(res.status).toBe(200);
+      expect(res.body.tickets.length).toBeGreaterThan(0);
+      for (const t of res.body.tickets) {
+        expect(t.requesterId).toBe(userAId);
+      }
+    });
+  });
 });

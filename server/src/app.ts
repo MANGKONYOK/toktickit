@@ -141,7 +141,7 @@ app.get("/api/tickets", requireAuth, requirePasswordChangeClear, async (req: Req
     const isRequester = req.user!.role === Role.REQUESTER;
     const effectiveRequesterId = isRequester
       ? req.user!.id
-      : (req.query.requesterId ? Number(req.query.requesterId) : req.user!.id);
+      : (req.query.requesterId ? Number(req.query.requesterId) : undefined);
 
     const parseResult = parseTicketQueryParams(req.query, effectiveRequesterId);
     if (!parseResult.isValid || !parseResult.params) {
