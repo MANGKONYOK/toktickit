@@ -30,11 +30,35 @@ declare global {
 export const SESSION_COOKIE_NAME = "toktickit_session";
 export const SESSION_SECRET = process.env.SESSION_SECRET || "toktickit_super_secret_session_salt_2026";
 
+import crypto from "crypto";
+
+export function signBearerToken(payload: { userId: number; role?: string }): string {
+  const jsonStr = JSON.stringify(payload);
+  const b64Payload = Buffer.from(jsonStr).toString("base64url");
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(b64Payload).digest("base64url");
+  return `${b64Payload}.${signature}`;
+}
+
+export function verifyBearerToken(token: string): { userId: number; role?: string } | null {
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [b64Payload, signature] = parts;
+  const expectedSignature = crypto.createHmac("sha256", SESSION_SECRET).update(b64Payload).digest("base64url");
+  if (signature !== expectedSignature) return null;
+  try {
+    const jsonStr = Buffer.from(b64Payload, "base64url").toString("utf-8");
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Extracts and verifies session identity from cookies or Bearer headers.
+ * Extracts and verifies session identity strictly from signed cookies or HMAC-verified Bearer headers.
  */
 export async function authenticateSession(req: Request): Promise<AuthenticatedUser | null> {
-  const sessionData = req.signedCookies?.[SESSION_COOKIE_NAME] || req.cookies?.[SESSION_COOKIE_NAME];
+  // Enforce signed cookies only: unsigned req.cookies is strictly rejected to prevent session forgery
+  const sessionData = req.signedCookies?.[SESSION_COOKIE_NAME];
   let userId: number | null = null;
 
   if (sessionData) {
@@ -46,15 +70,12 @@ export async function authenticateSession(req: Request): Promise<AuthenticatedUs
     }
   }
 
-  // Fallback to Bearer token if present
+  // Cryptographically verified Bearer token fallback (HMAC-SHA256)
   if (!userId && req.headers.authorization?.startsWith("Bearer ")) {
-    try {
-      const token = req.headers.authorization.slice(7);
-      const decoded = Buffer.from(token, "base64").toString("utf-8");
-      const parsed = JSON.parse(decoded);
-      userId = Number(parsed.userId);
-    } catch {
-      return null;
+    const token = req.headers.authorization.slice(7).trim();
+    const verified = verifyBearerToken(token);
+    if (verified && typeof verified.userId === "number") {
+      userId = verified.userId;
     }
   }
 

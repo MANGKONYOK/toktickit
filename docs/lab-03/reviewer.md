@@ -12,7 +12,7 @@
 | PR | Feature Branch | Target Branch | Scope / Feature Area | Reviewer Verdict |
 | :---: | :--- | :--- | :--- | :--- |
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
-| #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Pending Peer Review** |
+| #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -67,10 +67,46 @@
   - Automated test coverage: 100% pass across all 14 Feature 2 tests (`UNIT-01`, `MIG-01`, `API-01..09`, `UI-01..03`) and 61 Lab 2 regression tests.
 
 - **Reviewer comment received:**
-  *[Pending peer review from @kmood-Sakura on PR #2]*
+
+  ```text
+  Read both commits against lab3-staging, then checked your body's numbers against the files — 42 files, +2572 −111. Login and the migration are the best things here and I would change neither. Two rows block, both in code your tests only reach on the happy path.
+
+  Good:
+  - app.ts login — bcrypt before isActive, dummy compare on the unknown-email path.
+  - migration.sql — User rows inserted preserving the original RequesterUser.id.
+  - password-validator.ts and its 8 unit cases — BR-02 as a pure function.
+
+  Blocking Issues:
+  - Issue 4: Session identity is never verified. middleware/auth.ts:37 falls back to unsigned req.cookies, allowing forged cookie spoofing. Authorization: Bearer accepted unverified base64 payloads without cryptographic signature.
+  - Issue 5: Lab 2 routes resolve ids against the wrong table. app.ts:162, 301, 396, 523, 616, 696, 784 resolve x-requester-id against prisma.requesterUser, but Ticket.requesterId points to User. If user/requester sequences drift, lookup fails or resolves to wrong user.
+
+  Non-blocking Issues / Warnings:
+  - Issue 6: Seed is not idempotent. seed.ts:209 overwrites passwordHash on update with default password; lines 207-208 overwrite isActive and mustChangePassword; line 226 deleteMany wipes non-Lab-2 users.
+  - Issue 7: Cookie options should include secure: process.env.NODE_ENV === "production"; account count documentation should reflect 10 accounts (8 active, 2 inactive).
+  - Issue 8: Documentation trails branch — specification.md:254 Attachment schema columns (fileName, fileSize, filePath) mismatch database schema.
+  ```
 
 - **How I responded:**
-  *[To be populated after peer review feedback]*
+
+  ```text
+  Resolved all peer review findings comprehensively:
+  1. Cryptographic Session Verification (Issue 4):
+     - Dropped unsigned `req.cookies` fallback in `server/src/middleware/auth.ts`, strictly requiring signed cookies (`req.signedCookies[SESSION_COOKIE_NAME]`).
+     - Implemented `signBearerToken` and `verifyBearerToken` using HMAC-SHA256 keyed with `SESSION_SECRET`, strictly rejecting unverified/forged Bearer payloads.
+     - Added 3 automated security tests in `auth.api.test.ts` verifying that unsigned forged cookies and invalid Bearer signatures are rejected with 401 Unauthorized.
+  2. Multi-Table Requester Resolution & Sequence Alignment (Issue 5):
+     - Added `findActiveRequester` helper in `server/src/app.ts` and updated all 7 Lab 2 ticket/attachment endpoints to check `prisma.user` first before falling back to `prisma.requesterUser`.
+     - Synchronized initial seed ordering in `server/prisma/seed.ts` so `User` and `RequesterUser` match 1:1 on IDs 1..5.
+  3. True Seed Idempotency (Issue 6):
+     - Updated `seed.ts` so that on `update`, `User.upsert` preserves `passwordHash`, `mustChangePassword`, and `isActive` intact.
+     - Protected `Category` and `RelatedSystem` from overwriting `isActive` on existing rows.
+     - Removed destructive `prisma.requesterUser.deleteMany()`.
+  4. Cookie Flags & Account Count (Issue 7):
+     - Added `secure: process.env.NODE_ENV === "production"` to `POST /api/auth/login` session cookie options.
+     - Clarified the 10 core accounts (8 active, 2 inactive) in `specification.md`.
+  5. Schema Documentation Synchronization (Issue 8):
+     - Updated `Attachment` model definition in `docs/lab-03/specification.md` §8.1 to match `schema.prisma` exactly (`fileName`, `fileSize`, `filePath`, `uploadedAt`, `removedAt`, `removalReason`).
+  ```
 
 ---
 

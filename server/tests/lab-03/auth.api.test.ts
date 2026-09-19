@@ -3,6 +3,7 @@ import request from "supertest";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
 import bcrypt from "bcryptjs";
+import { signBearerToken, SESSION_COOKIE_NAME } from "../../src/middleware/auth.js";
 
 describe("Authentication APIs (API-01..07 / AC-01..06, BR-01..04)", () => {
   const prisma = getPrisma();
@@ -155,6 +156,40 @@ describe("Authentication APIs (API-01..07 / AC-01..06, BR-01..04)", () => {
       expect(res.body.user.email).toBe("piti.srisongkram@email.com");
       expect(res.body.user.role).toBe("IT_STAFF");
       expect(res.body.user).not.toHaveProperty("passwordHash");
+    });
+
+    it("Issue-04 / Security: strictly rejects unsigned session cookie", async () => {
+      // Attacker attempts to forge cookie by setting plain un-signed cookie header
+      const forgedPlainPayload = JSON.stringify({ userId: 1, role: "ADMIN" });
+      const res = await request(app)
+        .get("/api/auth/me")
+        .set("Cookie", `${SESSION_COOKIE_NAME}=${encodeURIComponent(forgedPlainPayload)}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
+    });
+
+    it("Issue-04 / Security: strictly rejects forged or unverified Bearer token", async () => {
+      // Plain base64 token without HMAC signature
+      const forgedToken = Buffer.from(JSON.stringify({ userId: 1, role: "ADMIN" })).toString("base64");
+      const res = await request(app)
+        .get("/api/auth/me")
+        .set("Authorization", `Bearer ${forgedToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
+    });
+
+    it("Issue-04 / Security: authenticates with cryptographically signed Bearer token", async () => {
+      const user = await prisma.user.findFirst({ where: { email: "piti.srisongkram@email.com" } });
+      const validBearer = signBearerToken({ userId: user!.id, role: user!.role });
+
+      const res = await request(app)
+        .get("/api/auth/me")
+        .set("Authorization", `Bearer ${validBearer}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.email).toBe("piti.srisongkram@email.com");
     });
   });
 

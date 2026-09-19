@@ -254,22 +254,23 @@ model Ticket {
 model Attachment {
   id             Int       @id @default(autoincrement())
   ticketId       Int
-  filename       String
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName       String
   originalName   String
   mimeType       String
-  size           Int
+  fileSize       Int
+  filePath       String
   uploadedById   Int
-  isRemoved      Boolean   @default(false)
-  removalReason  String?
-  removedById    Int?
+  uploadedAt     DateTime  @default(now())
   removedAt      DateTime?
-  createdAt      DateTime  @default(now())
+  removedById    Int?
+  removalReason  String?
 
-  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   uploadedBy     User      @relation("AttachmentUploader", fields: [uploadedById], references: [id])
   removedBy      User?     @relation("AttachmentRemover", fields: [removedById], references: [id])
 
-  @@index([ticketId, isRemoved])
+  @@index([ticketId])
+  @@index([ticketId, removedAt])
 }
 
 model Comment {

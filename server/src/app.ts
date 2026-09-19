@@ -33,6 +33,18 @@ app.use(
 app.use(cookieParser(SESSION_SECRET));
 app.use(express.json());
 
+// Helper to resolve requester identity across both Lab 3 User model and Lab 2 RequesterUser model.
+// Prioritizes active User (where Ticket.requesterId foreign key points) with fallback to RequesterUser.
+async function findActiveRequester(prisma: ReturnType<typeof getPrisma>, requesterId: number) {
+  const user = await prisma.user.findFirst({
+    where: { id: requesterId, isActive: true },
+  });
+  if (user) return user;
+  return await prisma.requesterUser.findFirst({
+    where: { id: requesterId, isActive: true },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Health check
 // ---------------------------------------------------------------------------
@@ -159,9 +171,7 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
     const prisma = getPrisma();
 
     // Verify requester exists and is active (ownership context)
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
-    });
+    const requester = await findActiveRequester(prisma, requesterId);
 
     if (!requester) {
       console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
@@ -298,9 +308,7 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
 
     // Verify foreign key integrity & active status
     const [requester, category, system] = await Promise.all([
-      prisma.requesterUser.findFirst({
-        where: { id: Number(requesterId), isActive: true },
-      }),
+      findActiveRequester(prisma, Number(requesterId)),
       prisma.category.findFirst({
         where: { id: Number(categoryId), isActive: true },
       }),
@@ -393,9 +401,7 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
     const prisma = getPrisma();
 
     // Verify requester exists and is active before querying ticket
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
-    });
+    const requester = await findActiveRequester(prisma, requesterId);
     if (!requester) {
       console.warn(`[${correlationId}] Active requester not found: id=${requesterId}`);
       res.status(404).json({
@@ -520,9 +526,7 @@ app.post("/api/tickets/:id/attachments", uploadMiddleware.single("file"), async 
     const prisma = getPrisma();
 
     // Verify requester exists and is active before querying ticket
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
-    });
+    const requester = await findActiveRequester(prisma, requesterId);
     if (!requester) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       res.status(404).json({
@@ -613,9 +617,7 @@ app.get("/api/tickets/:id/attachments", async (req: Request, res: Response) => {
     const prisma = getPrisma();
 
     // Verify requester exists and is active before querying ticket
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
-    });
+    const requester = await findActiveRequester(prisma, requesterId);
     if (!requester) {
       res.status(404).json({
         error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
@@ -693,9 +695,7 @@ app.get("/api/attachments/:id/download", async (req: Request, res: Response) => 
     const prisma = getPrisma();
 
     // Verify requester exists and is active before querying attachment
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
-    });
+    const requester = await findActiveRequester(prisma, requesterId);
     if (!requester) {
       res.status(404).json({
         error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
@@ -781,9 +781,7 @@ app.delete("/api/attachments/:id", async (req: Request, res: Response) => {
     const prisma = getPrisma();
 
     // Verify requester exists and is active before querying attachment
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
-    });
+    const requester = await findActiveRequester(prisma, requesterId);
     if (!requester) {
       res.status(404).json({
         error: { code: "NOT_FOUND", message: "Active requester not found", correlationId },
@@ -911,6 +909,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     res.cookie(SESSION_COOKIE_NAME, JSON.stringify(sessionPayload), {
       httpOnly: true,
       signed: true,
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: "lax",
