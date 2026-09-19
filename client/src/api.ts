@@ -292,3 +292,76 @@ export async function softRemoveAttachment(
 export function getAttachmentDownloadUrl(attachmentId: number, requesterId: number): string {
   return `${API_URL}/api/attachments/${attachmentId}/download?requesterId=${requesterId}`;
 }
+
+export async function loginApi(credentials: { email: string; password: string }) {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(credentials),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error?.message || `Login failed (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = data.error?.code;
+    (err as any).fieldErrors = data.error?.fieldErrors;
+    throw err;
+  }
+  return data;
+}
+
+export async function logoutApi() {
+  const res = await fetch(`${API_URL}/api/auth/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error(data.error?.message || `Logout failed (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function getMeApi() {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error(data.error?.message || `Not authenticated (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = data.error?.code;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function changePasswordApi(payload: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  const res = await fetch(`${API_URL}/api/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error?.message || `Password change failed (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = data.error?.code;
+    throw err;
+  }
+  return data;
+}

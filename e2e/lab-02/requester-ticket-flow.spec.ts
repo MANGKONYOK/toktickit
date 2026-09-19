@@ -241,6 +241,12 @@ test.describe("Requester End-to-End User Journeys (E2E-01 / AC-01..18)", () => {
         path: path.join(TICKETS_SCREENSHOT_DIR, "01-my-tickets-desktop.png"),
         fullPage: true,
       });
+    } else if (testInfo.project.name === "tablet") {
+      await expect(page.locator('[data-testid="ticket-table"]')).toBeVisible();
+      await page.screenshot({
+        path: path.join(TICKETS_SCREENSHOT_DIR, "07-my-tickets-tablet.png"),
+        fullPage: true,
+      });
     } else if (testInfo.project.name === "mobile") {
       await expect(page.locator('[data-testid="ticket-cards-list"]')).toBeVisible();
       await page.screenshot({
