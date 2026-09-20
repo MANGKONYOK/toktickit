@@ -438,3 +438,84 @@ export async function changePasswordApi(payload: {
   }
   return data;
 }
+
+export interface StaffTicketItem {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  description?: string;
+  categoryName: string;
+  relatedSystemName?: string;
+  priority: Priority;
+  itPriority: Priority;
+  status: TicketStatus;
+  requesterName: string;
+  requesterId?: number;
+  assignedOwnerName: string | null;
+  assignedOwnerId: number | null;
+  ticketOwner: string;
+  ticketOwnerId?: number | null;
+  resolvedByRequester?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  category?: Category;
+  relatedSystem?: RelatedSystem;
+}
+
+export interface StaffTicketQueryParams {
+  search?: string;
+  categoryId?: number;
+  category?: string;
+  priority?: Priority;
+  status?: TicketStatus;
+  assigned?: "all" | "unassigned" | "me";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+}
+
+export interface PaginatedStaffTicketsResponse {
+  tickets: StaffTicketItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    limit: number;
+    totalRecords: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export async function fetchStaffTickets(
+  params: StaffTicketQueryParams = {}
+): Promise<PaginatedStaffTicketsResponse> {
+  const query = new URLSearchParams();
+
+  if (params.search) query.set("search", params.search);
+  if (params.categoryId !== undefined) query.set("categoryId", String(params.categoryId));
+  if (params.category) query.set("category", params.category);
+  if (params.priority) query.set("priority", params.priority);
+  if (params.status) query.set("status", params.status);
+  if (params.assigned) query.set("assigned", params.assigned);
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortOrder) query.set("sortOrder", params.sortOrder);
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
+  else if (params.limit !== undefined) query.set("pageSize", String(params.limit));
+
+  const res = await fetch(`${API_URL}/api/staff/tickets?${query.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(errorData.error?.message || `Failed to fetch staff queue (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}

@@ -14,6 +14,7 @@
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
+| #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Ready for Review** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -217,6 +218,33 @@
   3. Verification:
      - 112/112 server tests passing across 16 test files (0 failures).
      - 49/49 client tests passing across 12 test suites (0 failures).
+  ```
+
+#### PR #4 (`lab3-feature/4-staff-ticket-queue`)
+
+- **Scope Implemented:**
+  1. `GET /api/staff/tickets` API endpoint gated by `requireAuth`, `requirePasswordChangeClear`, and `requireRole(Role.IT_STAFF, Role.ADMIN)`.
+  2. Substring search across `ticketNumber` and `summary` (case-insensitive).
+  3. Multi-criteria filtering by `categoryId` / `categoryName`, `priority` (operational `itPriority`), and `status` across all 8 governed lifecycle statuses.
+  4. Assignment filtering: `assigned=unassigned` (`ticketOwnerId is null`), `assigned=me` (`ticketOwnerId == req.user.id`), and `assigned=all`.
+  5. Deterministic sorting (`createdAt`, `ticketNumber`, `summary`, `itPriority`, `status`, `updatedAt`) with secondary tie-breaker `id: "desc"` (BR-11).
+  6. Server-side pagination with structured envelope matching `api-spec.md` §5.1.
+  7. Responsive Zen Green `StaffTicketQueue.tsx` component with search/filter toolbar, sortable table, tablet scroll, mobile stacked cards, and pagination.
+  8. Automated test suites:
+     - `server/tests/lab-03/staff-queue.api.test.ts` (16 tests, covering API-15, API-16, API-17, AC-12, AC-13, AC-14).
+     - `client/tests/lab-03/StaffTicketQueue.test.tsx` (10 tests, covering UI-05).
+  9. Verification: 128/128 server tests passing across 17 files, 59/59 client tests passing across 13 files.
+
+- **Reviewer comment I received:**
+
+  ```text
+  [Pending initial peer review from @kmood-Sakura]
+  ```
+
+- **How I responded:**
+
+  ```text
+  [To be updated upon peer review feedback]
   ```
 
 ---
