@@ -116,7 +116,7 @@ The IT Department requires TokTickIT to transition from an isolated requester pr
 - **BR-22 (Safe Error Envelopes):** Database query errors, syntax errors, and internal server exceptions must never leak SQL queries, schema metadata, or stack traces. The server must return `{ "error": { "code": "INTERNAL_SERVER_ERROR", "message": "...", "correlationId": "<UUID>" } }`.
 - **BR-23 (Audit Attribution):** Every comment, note, and ticket modification must record the authenticated `authorId` or `updatedAt` timestamp derived from the server session.
 - **BR-24 (Attachment Authorization Continuity):** Attachment uploads, downloads, and soft-removals must maintain Lab 2 constraints while enforcing that Requesters can only access attachments on their own tickets, whereas IT Staff and Admins can access attachments across all tickets.
-- **BR-25 (Pagination Bounds):** Pagination parameters are constrained to `page >= 1` (default 1) and `pageSize` in `[10, 20, 50]` (default 10). Out-of-bounds parameters default gracefully or return structured 400 errors.
+- **BR-25 (Pagination Bounds):** Pagination parameters are constrained to `page >= 1` (default 1). The frontend UI strictly provides page size presets in `[10, 20, 50]` (default 10), while the backend API safely bounds `pageSize` between 1 and 50 to accommodate integration testing and granular slicing. Out-of-bounds parameters default gracefully or return structured 400 errors.
 
 ---
 

@@ -1390,7 +1390,7 @@ app.get(
       console.error(`[${correlationId}] Failed to fetch staff tickets:`, error);
       res.status(500).json({
         error: {
-          code: "INTERNAL_ERROR",
+          code: "INTERNAL_SERVER_ERROR",
           message: "Failed to retrieve staff tickets",
           correlationId,
         },

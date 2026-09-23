@@ -363,7 +363,7 @@ For validation failures (HTTP 400), field-specific details are included:
   - `sortBy` (string) — `createdAt`, `ticketNumber`, `summary`, `priority`, `status`, `updatedAt` (Default `createdAt`)
   - `sortOrder` (string) — `asc` or `desc` (Default `desc`)
   - `page` (integer) — Page number (Default 1)
-  - `pageSize` (integer) — 10, 20, 50 (Default 10)
+  - `pageSize` (integer) — 1 to 50; UI presets: 10, 20, 50 (Default 10)
 - **Success Response (`200 OK`):**
 
   ```json
@@ -620,4 +620,4 @@ For validation failures (HTTP 400), field-specific details are included:
   {
     "message": "Password reset successfully. User must change password at next login."
   }
-  ```
+  ```  

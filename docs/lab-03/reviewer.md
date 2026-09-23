@@ -238,13 +238,29 @@
 - **Reviewer comment I received:**
 
   ```text
-  [Pending initial peer review from @kmood-Sakura]
+  Read cecbc33 against lab3-staging - 10 files, +2242 −460 — and checked your checklist against the code rather than ticking it. The queue is the cleanest feature on this branch so far. Nothing blocks; one row is worth settling before Feature 5.
+
+  Features status:
+  1. app.ts:1260-1263 — the full requireAuth -> requirePasswordChangeClear -> requireRole(IT_STAFF, ADMIN) chain, and :1338 really does append { id: "desc" } [pass]
+  2. app.ts:1326 maps sortBy=priority to itPriority and StaffTicketQueue.tsx:449 renders itPriority — the sort key and the column agree [pass]
+  3. Every countable claim in your body holds, measured rather than taken on trust [pass]
+  4. Two rules your body cites are not what the code does [warning]
+
+  Warning #4:
+  - staff-ticket-query.ts:141 accepts any integer from 1 to 50 while BR-25 and your body both name the set [10, 20, 50], and app.ts:1393 answers INTERNAL_ERROR where BR-22 specifies INTERNAL_SERVER_ERROR. Neither costs anything today — the page size is still bounded, and the 500 still redacts and carries a correlationId, so BR-22's substance holds and only its code string differs — but both are rules your own contract states, so is it the code or the contract you want to move?
   ```
 
 - **How I responded:**
 
   ```text
-  [To be updated upon peer review feedback]
+  Resolved both items in Warning #4 cleanly:
+  1. Aligned 500 Error Code with BR-22:
+     - In `server/src/app.ts` (GET /api/staff/tickets catch block), changed error code from `INTERNAL_ERROR` to `INTERNAL_SERVER_ERROR`, strictly matching the BR-22 envelope specification.
+  2. Synchronized Pagination Bounds Contract (BR-25 & API-Spec §5.1):
+     - In `specification.md` (BR-25) and `api-spec.md` (§5.1), clarified the pagination contract: the frontend UI (`StaffTicketQueue.tsx`) presents discrete presets in `[10, 20, 50]` (default 10), while the backend API (`staff-ticket-query.ts`) safely bounds `pageSize` between 1 and 50. This avoids artificial test rigidity (enabling granular integration test slices like `pageSize=2`) while strictly upholding memory safety with a hard upper bound of 50.
+  3. Verification:
+     - All 128 server tests passing across 17 test files (0 failures).
+     - All 59 client tests passing across 13 test files (0 failures).
   ```
 
 ---
