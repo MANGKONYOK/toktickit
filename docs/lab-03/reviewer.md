@@ -263,6 +263,34 @@
      - All 59 client tests passing across 13 test files (0 failures).
   ```
 
+- **Reviewer follow-on note received:**
+
+  ```text
+  Re-read at e482d0a. You moved the contract for one and the code for the other, which is the right split — the page size genuinely was a UI preset dressed up as an API rule. One follow-on, cheap, and then I am done with this PR.
+
+  Features status:
+  1. BR-25 now separates the backend bound from the UI presets, and all three layers agree [pass]
+  2. app.ts:1393 answers INTERNAL_SERVER_ERROR, as BR-22 names it [pass]
+  3. The same rule is still unmet in the three places that matter more [warning]
+
+  Warning #3:
+  - app.ts:1129 on login, :1248 on change-password and :1468 in the global error middleware all still answer INTERNAL_ERROR. I cited only :1393 because that was Feature 4's line, and you fixed exactly that — but :1468 is the catch-all for every unhandled exception in the app, so BR-22 is now met on one endpoint and missed on the one that covers all the rest; three identical string edits close it, or BR-22 moves instead?
+  ```
+
+- **How I responded:**
+
+  ```text
+  Agreed completely and resolved Warning #3 by updating code to strictly uphold BR-22 across all three locations:
+  1. Updated `server/src/app.ts`:
+     - Line 1129 (`POST /api/auth/login` catch block): changed `INTERNAL_ERROR` -> `INTERNAL_SERVER_ERROR`.
+     - Line 1248 (`POST /api/auth/change-password` catch block): changed `INTERNAL_ERROR` -> `INTERNAL_SERVER_ERROR`.
+     - Line 1468 (centralized unhandled exception middleware): changed `INTERNAL_ERROR` -> `INTERNAL_SERVER_ERROR`.
+  2. Consistency:
+     - The central error handler now uniformly emits `code: "INTERNAL_SERVER_ERROR"` along with `correlationId` and sanitized messaging for all unhandled application errors, bringing the runtime 100% into agreement with BR-22.
+  3. Verification:
+     - Full test suites re-run and passing: 128/128 server tests (17 files), 59/59 client tests (13 files).
+  ```
+
 ---
 
 ## Pull Requests I Reviewed for My Partner (@kmood-Sakura)

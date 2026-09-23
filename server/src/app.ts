@@ -1126,7 +1126,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     console.error("POST /api/auth/login failed:", err);
     res.status(500).json({
       error: {
-        code: "INTERNAL_ERROR",
+        code: "INTERNAL_SERVER_ERROR",
         message: "An unexpected error occurred during login.",
         correlationId,
       },
@@ -1245,7 +1245,7 @@ app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Res
     console.error("POST /api/auth/change-password failed:", err);
     res.status(500).json({
       error: {
-        code: "INTERNAL_ERROR",
+        code: "INTERNAL_SERVER_ERROR",
         message: "Failed to change password.",
         correlationId,
       },
@@ -1465,7 +1465,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error(`[${correlationId}] Unhandled server exception:`, err);
   res.status(500).json({
     error: {
-      code: "INTERNAL_ERROR",
+      code: "INTERNAL_SERVER_ERROR",
       message: "An unexpected server error occurred",
       correlationId,
     },
