@@ -10,6 +10,7 @@ import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticket-number.js";
 import { validateTicketInput, PriorityType } from "./utils/ticket-validation.js";
 import { parseTicketQueryParams } from "./utils/ticket-query.js";
+import { parseStaffTicketQueryParams } from "./utils/staff-ticket-query.js";
 import { uploadMiddleware } from "./utils/upload.js";
 import {
   requireAuth,
@@ -1125,7 +1126,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     console.error("POST /api/auth/login failed:", err);
     res.status(500).json({
       error: {
-        code: "INTERNAL_ERROR",
+        code: "INTERNAL_SERVER_ERROR",
         message: "An unexpected error occurred during login.",
         correlationId,
       },
@@ -1244,7 +1245,7 @@ app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Res
     console.error("POST /api/auth/change-password failed:", err);
     res.status(500).json({
       error: {
-        code: "INTERNAL_ERROR",
+        code: "INTERNAL_SERVER_ERROR",
         message: "Failed to change password.",
         correlationId,
       },
@@ -1260,8 +1261,141 @@ app.get(
   requireAuth,
   requirePasswordChangeClear,
   requireRole(Role.IT_STAFF, Role.ADMIN),
-  async (_req: Request, res: Response) => {
-    res.status(200).json({ tickets: [] });
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    try {
+      const parseResult = parseStaffTicketQueryParams(req.query);
+      if (!parseResult.isValid || !parseResult.params) {
+        console.warn(`[${correlationId}] GET /api/staff/tickets validation failed:`, parseResult.errors);
+        res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid query parameters",
+            fieldErrors: parseResult.errors,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const {
+        search,
+        categoryId,
+        categoryName,
+        itPriority,
+        status,
+        assigned,
+        sortBy,
+        sortOrder,
+        page,
+        limit,
+      } = parseResult.params;
+
+      const prisma = getPrisma();
+      const where: any = {};
+
+      if (search) {
+        where.OR = [
+          { ticketNumber: { contains: search, mode: "insensitive" } },
+          { summary: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
+      if (categoryId) {
+        where.categoryId = categoryId;
+      } else if (categoryName) {
+        where.category = { name: { contains: categoryName, mode: "insensitive" } };
+      }
+
+      if (itPriority) {
+        where.itPriority = itPriority;
+      }
+
+      if (status) {
+        where.currentStatus = status;
+      }
+
+      if (assigned === "unassigned") {
+        where.ticketOwnerId = null;
+      } else if (assigned === "me") {
+        where.ticketOwnerId = req.user!.id;
+      }
+
+      // Map sortBy to database column name
+      let dbSortField: string = sortBy;
+      if (sortBy === "priority") {
+        dbSortField = "itPriority";
+      } else if (sortBy === "status") {
+        dbSortField = "currentStatus";
+      }
+
+      const skip = (page - 1) * limit;
+
+      const [tickets, total] = await Promise.all([
+        prisma.ticket.findMany({
+          where,
+          // Deterministic ordering: secondary sort key on id: "desc" prevents page drift (BR-11)
+          orderBy: [{ [dbSortField]: sortOrder }, { id: "desc" }],
+          skip,
+          take: limit,
+          include: {
+            category: { select: { id: true, name: true } },
+            relatedSystem: { select: { id: true, name: true } },
+            requester: { select: { id: true, fullName: true, email: true } },
+            assignedStaff: { select: { id: true, fullName: true, email: true } },
+          },
+        }),
+        prisma.ticket.count({ where }),
+      ]);
+
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+
+      const mappedTickets = tickets.map((t) => ({
+        id: t.id,
+        ticketNumber: t.ticketNumber,
+        summary: t.summary,
+        description: t.description,
+        categoryName: t.category?.name || "Unknown",
+        relatedSystemName: t.relatedSystem?.name || "None",
+        priority: t.requestedPriority,
+        itPriority: t.itPriority,
+        status: t.currentStatus,
+        requesterName: t.requester?.fullName || "Unknown",
+        requesterId: t.requesterId,
+        assignedOwnerName: t.assignedStaff?.fullName || (t.ticketOwner !== "Unassigned" ? t.ticketOwner : null),
+        assignedOwnerId: t.ticketOwnerId,
+        ticketOwner: t.assignedStaff?.fullName || t.ticketOwner,
+        ticketOwnerId: t.ticketOwnerId,
+        resolvedByRequester: t.resolvedByRequester ?? false,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        category: t.category,
+        relatedSystem: t.relatedSystem,
+        requester: t.requester,
+        assignedStaff: t.assignedStaff,
+      }));
+
+      res.status(200).json({
+        tickets: mappedTickets,
+        pagination: {
+          page,
+          pageSize: limit,
+          limit,
+          totalRecords: total,
+          total,
+          totalPages,
+        },
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to fetch staff tickets:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to retrieve staff tickets",
+          correlationId,
+        },
+      });
+    }
   }
 );
 
@@ -1331,7 +1465,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error(`[${correlationId}] Unhandled server exception:`, err);
   res.status(500).json({
     error: {
-      code: "INTERNAL_ERROR",
+      code: "INTERNAL_SERVER_ERROR",
       message: "An unexpected server error occurred",
       correlationId,
     },

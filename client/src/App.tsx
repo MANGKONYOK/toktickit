@@ -10,6 +10,7 @@ import MyTickets from "./components/MyTickets.js";
 import TicketDetail from "./components/TicketDetail.js";
 import Login from "./components/Login.js";
 import ChangePasswordModal from "./components/ChangePasswordModal.js";
+import StaffTicketQueue from "./components/StaffTicketQueue.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -103,15 +104,13 @@ function MainContent() {
           </div>
         )}
 
-        {/* Staff Queue Placeholder for Feature 3 */}
-        {activeTab === "staff-queue" && (
-          <div className="zen-card p-4 text-center" data-testid="staff-queue-placeholder">
-            <h4 className="fw-bold mb-2" style={{ color: "var(--color-primary, #006B3C)" }}>
-              IT Staff Ticket Queue
-            </h4>
-            <p className="text-muted small mb-0">Staff operational queue view will be active in Feature 3.</p>
-          </div>
-        )}
+        {/* Staff Queue */}
+        {activeTab === "staff-queue" &&
+          (selectedTicketId !== null ? (
+            <TicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
+          ) : (
+            <StaffTicketQueue onSelectTicket={(id) => setSelectedTicketId(id)} />
+          ))}
 
         {/* Admin Users Placeholder for Feature 4 */}
         {activeTab === "admin-users" && (

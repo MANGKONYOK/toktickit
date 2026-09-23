@@ -14,6 +14,7 @@
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
+| #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Ready for Review** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -217,6 +218,77 @@
   3. Verification:
      - 112/112 server tests passing across 16 test files (0 failures).
      - 49/49 client tests passing across 12 test suites (0 failures).
+  ```
+
+#### PR #4 (`lab3-feature/4-staff-ticket-queue`)
+
+- **Scope Implemented:**
+  1. `GET /api/staff/tickets` API endpoint gated by `requireAuth`, `requirePasswordChangeClear`, and `requireRole(Role.IT_STAFF, Role.ADMIN)`.
+  2. Substring search across `ticketNumber` and `summary` (case-insensitive).
+  3. Multi-criteria filtering by `categoryId` / `categoryName`, `priority` (operational `itPriority`), and `status` across all 8 governed lifecycle statuses.
+  4. Assignment filtering: `assigned=unassigned` (`ticketOwnerId is null`), `assigned=me` (`ticketOwnerId == req.user.id`), and `assigned=all`.
+  5. Deterministic sorting (`createdAt`, `ticketNumber`, `summary`, `itPriority`, `status`, `updatedAt`) with secondary tie-breaker `id: "desc"` (BR-11).
+  6. Server-side pagination with structured envelope matching `api-spec.md` §5.1.
+  7. Responsive Zen Green `StaffTicketQueue.tsx` component with search/filter toolbar, sortable table, tablet scroll, mobile stacked cards, and pagination.
+  8. Automated test suites:
+     - `server/tests/lab-03/staff-queue.api.test.ts` (16 tests, covering API-15, API-16, API-17, AC-12, AC-13, AC-14).
+     - `client/tests/lab-03/StaffTicketQueue.test.tsx` (10 tests, covering UI-05).
+  9. Verification: 128/128 server tests passing across 17 files, 59/59 client tests passing across 13 files.
+
+- **Reviewer comment I received:**
+
+  ```text
+  Read cecbc33 against lab3-staging - 10 files, +2242 −460 — and checked your checklist against the code rather than ticking it. The queue is the cleanest feature on this branch so far. Nothing blocks; one row is worth settling before Feature 5.
+
+  Features status:
+  1. app.ts:1260-1263 — the full requireAuth -> requirePasswordChangeClear -> requireRole(IT_STAFF, ADMIN) chain, and :1338 really does append { id: "desc" } [pass]
+  2. app.ts:1326 maps sortBy=priority to itPriority and StaffTicketQueue.tsx:449 renders itPriority — the sort key and the column agree [pass]
+  3. Every countable claim in your body holds, measured rather than taken on trust [pass]
+  4. Two rules your body cites are not what the code does [warning]
+
+  Warning #4:
+  - staff-ticket-query.ts:141 accepts any integer from 1 to 50 while BR-25 and your body both name the set [10, 20, 50], and app.ts:1393 answers INTERNAL_ERROR where BR-22 specifies INTERNAL_SERVER_ERROR. Neither costs anything today — the page size is still bounded, and the 500 still redacts and carries a correlationId, so BR-22's substance holds and only its code string differs — but both are rules your own contract states, so is it the code or the contract you want to move?
+  ```
+
+- **How I responded:**
+
+  ```text
+  Resolved both items in Warning #4 cleanly:
+  1. Aligned 500 Error Code with BR-22:
+     - In `server/src/app.ts` (GET /api/staff/tickets catch block), changed error code from `INTERNAL_ERROR` to `INTERNAL_SERVER_ERROR`, strictly matching the BR-22 envelope specification.
+  2. Synchronized Pagination Bounds Contract (BR-25 & API-Spec §5.1):
+     - In `specification.md` (BR-25) and `api-spec.md` (§5.1), clarified the pagination contract: the frontend UI (`StaffTicketQueue.tsx`) presents discrete presets in `[10, 20, 50]` (default 10), while the backend API (`staff-ticket-query.ts`) safely bounds `pageSize` between 1 and 50. This avoids artificial test rigidity (enabling granular integration test slices like `pageSize=2`) while strictly upholding memory safety with a hard upper bound of 50.
+  3. Verification:
+     - All 128 server tests passing across 17 test files (0 failures).
+     - All 59 client tests passing across 13 test files (0 failures).
+  ```
+
+- **Reviewer follow-on note received:**
+
+  ```text
+  Re-read at e482d0a. You moved the contract for one and the code for the other, which is the right split — the page size genuinely was a UI preset dressed up as an API rule. One follow-on, cheap, and then I am done with this PR.
+
+  Features status:
+  1. BR-25 now separates the backend bound from the UI presets, and all three layers agree [pass]
+  2. app.ts:1393 answers INTERNAL_SERVER_ERROR, as BR-22 names it [pass]
+  3. The same rule is still unmet in the three places that matter more [warning]
+
+  Warning #3:
+  - app.ts:1129 on login, :1248 on change-password and :1468 in the global error middleware all still answer INTERNAL_ERROR. I cited only :1393 because that was Feature 4's line, and you fixed exactly that — but :1468 is the catch-all for every unhandled exception in the app, so BR-22 is now met on one endpoint and missed on the one that covers all the rest; three identical string edits close it, or BR-22 moves instead?
+  ```
+
+- **How I responded:**
+
+  ```text
+  Agreed completely and resolved Warning #3 by updating code to strictly uphold BR-22 across all three locations:
+  1. Updated `server/src/app.ts`:
+     - Line 1129 (`POST /api/auth/login` catch block): changed `INTERNAL_ERROR` -> `INTERNAL_SERVER_ERROR`.
+     - Line 1248 (`POST /api/auth/change-password` catch block): changed `INTERNAL_ERROR` -> `INTERNAL_SERVER_ERROR`.
+     - Line 1468 (centralized unhandled exception middleware): changed `INTERNAL_ERROR` -> `INTERNAL_SERVER_ERROR`.
+  2. Consistency:
+     - The central error handler now uniformly emits `code: "INTERNAL_SERVER_ERROR"` along with `correlationId` and sanitized messaging for all unhandled application errors, bringing the runtime 100% into agreement with BR-22.
+  3. Verification:
+     - Full test suites re-run and passing: 128/128 server tests (17 files), 59/59 client tests (13 files).
   ```
 
 ---

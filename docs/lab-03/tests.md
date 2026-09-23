@@ -40,9 +40,9 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **API-12** | API | AC-10 | Add public comment by Requester on owned ticket | HTTP 201 Created, comment recorded with `authorId` | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
 | **API-13** | API | AC-10 | Add public comment by IT Staff on any ticket | HTTP 201 Created, comment visible in public stream | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
 | **API-14** | API | AC-11 | Requester indicates problem resolved | HTTP 200 OK, sets `resolvedByRequester = true`, status unchanged (BR-05) | `server/tests/lab-03/tickets.api.test.ts` | Pass |
-| **API-15** | API | AC-12 | IT Staff queries ticket queue with search substring | HTTP 200 OK, returning matching tickets across all users | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
-| **API-16** | API | AC-13 | IT Staff queries queue with category and priority filters | HTTP 200 OK, returning tickets matching intersection of filters | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
-| **API-17** | API | AC-14 | IT Staff filters queue by `assigned=unassigned` and `assigned=me` | HTTP 200 OK, returning accurate subset based on `ticketOwnerId` | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
+| **API-15** | API | AC-12 | IT Staff queries ticket queue with search substring | HTTP 200 OK, returning matching tickets across all users | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
+| **API-16** | API | AC-13 | IT Staff queries queue with category and priority filters | HTTP 200 OK, returning tickets matching intersection of filters | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
+| **API-17** | API | AC-14 | IT Staff filters queue by `assigned=unassigned` and `assigned=me` | HTTP 200 OK, returning accurate subset based on `ticketOwnerId` | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
 | **API-18** | API | AC-15 | IT Staff retrieves ticket detail (`GET /api/staff/tickets/:id`) | HTTP 200 OK with ticket, comments, and internal notes | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | **API-19** | API | AC-16 | IT Staff claims ticket ownership | HTTP 200 OK, updating `ticketOwnerId` to current staff user | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | **API-20** | API | AC-17 | IT Staff modifies operational `itPriority` | HTTP 200 OK, updating `itPriority` independently of requested | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
@@ -57,7 +57,7 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **UI-02** | Component | AC-04 | Mandatory password change modal intercepts navigation | Form validation checklist, disables submit until valid | `client/tests/lab-03/ChangePassword.test.tsx` | Pass |
 | **UI-03** | Component | AC-07 | Role-based navigation renders appropriate tabs per role | Requester sees My Tickets; Staff sees Queue; Admin sees Users | `client/tests/lab-03/Navbar.test.tsx` | Pass |
 | **UI-04** | Component | AC-10, AC-11 | Public comments stream and problem resolved indication | Discussion stream with author role badges, comment posting, and problem resolved indication | `client/tests/lab-03/TicketComments.test.tsx` | Pass |
-| **UI-05** | Component | AC-12 | Staff ticket queue renders filter bar, data table, pagination | Filter interactions, sort header toggles, empty queue state | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
+| **UI-05** | Component | AC-12 | Staff ticket queue renders filter bar, data table, pagination | Filter interactions, sort header toggles, empty queue state | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
 | **UI-06** | Component | AC-15 | Staff ticket detail renders operational controls & notes | Dropdown edits, public comment stream, amber internal notes | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | **UI-07** | Component | AC-20 | Admin user management renders user table and creation drawer | User creation, role change, self-deactivation disabled toggle | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
 | **E2E-01** | E2E | AC-01..06 | Authentication, inactive account, and first-login password change | Complete browser journey across viewports | `e2e/lab-03/authentication.spec.ts` | Planned |
@@ -81,9 +81,9 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **AC-09** | Requester Ownership Boundary Isolation | `API-11`, `E2E-02` | **Pass** |
 | **AC-10** | Public Comments Submission & Stream | `API-12`, `API-13`, `UI-04`, `E2E-02` | **Pass** |
 | **AC-11** | Requester Problem Resolved Indication | `API-14`, `UI-04`, `E2E-02` | **Pass** |
-| **AC-12** | IT Staff Ticket Queue Search | `API-15`, `UI-05`, `E2E-02` | **Planned** |
-| **AC-13** | IT Staff Queue Multi-Criteria Filters | `API-16`, `UI-05`, `E2E-02` | **Planned** |
-| **AC-14** | IT Staff Queue Ownership Filtering | `API-17`, `UI-05`, `E2E-02` | **Planned** |
+| **AC-12** | IT Staff Ticket Queue Search | `API-15`, `UI-05`, `E2E-02` | **Pass** |
+| **AC-13** | IT Staff Queue Multi-Criteria Filters | `API-16`, `UI-05`, `E2E-02` | **Pass** |
+| **AC-14** | IT Staff Queue Ownership Filtering | `API-17`, `UI-05`, `E2E-02` | **Pass** |
 | **AC-15** | IT Staff Ticket Detail Retrieval | `API-18`, `UI-06`, `E2E-02` | **Planned** |
 | **AC-16** | Ticket Ownership Claiming & Reassignment | `API-19`, `UI-06`, `E2E-02` | **Planned** |
 | **AC-17** | Operational IT Priority Modification | `API-20`, `UI-06`, `E2E-02` | **Planned** |
