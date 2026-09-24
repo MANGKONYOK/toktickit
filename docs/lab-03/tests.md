@@ -24,7 +24,7 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | Test ID | Type | Req / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
 | **UNIT-01** | Unit | AC-05, BR-02 | Password complexity validator pure function | Rejects < 8 chars, missing uppercase, digit, or symbol; accepts valid combinations | `server/tests/lab-03/password-validator.unit.test.ts` | Pass |
-| **UNIT-02** | Unit | AC-18, BR-14 | 8-state ticket transition engine pure function | Accurately allows permitted 8 transitions and rejects forbidden transitions (e.g. `NEW` $\to$ `IN_PROGRESS`) | `server/tests/lab-03/status-transition.unit.test.ts` | Planned |
+| **UNIT-02** | Unit | AC-18, BR-14 | 8-state ticket transition engine pure function | Accurately allows permitted 8 transitions and rejects forbidden transitions (e.g. `NEW` $\to$ `IN_PROGRESS`) | `server/tests/lab-03/status-transition.unit.test.ts` | Pass |
 | **MIG-01** | Migration | AC-04, §5.2 | Migrated Lab 2 Requester initial password login & mandatory change | Validates initial password, blocks app access until changed, enters app on change | `server/tests/lab-03/migration-auth.api.test.ts` | Pass |
 | **API-01** | API | AC-01 | Valid user authentication with correct email/password | HTTP 200 OK, sets session cookie, returns safe user object | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | **API-02** | API | AC-02 | Invalid credentials submission | HTTP 401 Unauthorized (`INVALID_CREDENTIALS`), no account leak | `server/tests/lab-03/auth.api.test.ts` | Pass |
@@ -43,13 +43,13 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **API-15** | API | AC-12 | IT Staff queries ticket queue with search substring | HTTP 200 OK, returning matching tickets across all users | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
 | **API-16** | API | AC-13 | IT Staff queries queue with category and priority filters | HTTP 200 OK, returning tickets matching intersection of filters | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
 | **API-17** | API | AC-14 | IT Staff filters queue by `assigned=unassigned` and `assigned=me` | HTTP 200 OK, returning accurate subset based on `ticketOwnerId` | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
-| **API-18** | API | AC-15 | IT Staff retrieves ticket detail (`GET /api/staff/tickets/:id`) | HTTP 200 OK with ticket, comments, and internal notes | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| **API-19** | API | AC-16 | IT Staff claims ticket ownership | HTTP 200 OK, updating `ticketOwnerId` to current staff user | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| **API-20** | API | AC-17 | IT Staff modifies operational `itPriority` | HTTP 200 OK, updating `itPriority` independently of requested | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| **API-21** | API | AC-18 | Valid status transition (`NEW` -> `OPEN`) | HTTP 200 OK, status updated | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| **API-22** | API | AC-18 | Invalid status transition (`NEW` -> `IN_PROGRESS` rejected) | HTTP 400 Bad Request (`INVALID_STATUS_TRANSITION`) | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| **API-23** | API | AC-19 | IT Staff creates private Internal Note | HTTP 201 Created, internal note saved | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| **API-24** | Security | AC-19 | Requester attempts to create or read Internal Note | HTTP 403 Forbidden; note content strictly concealed | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
+| **API-18** | API | AC-15 | IT Staff retrieves ticket detail (`GET /api/staff/tickets/:id`) | HTTP 200 OK with ticket, comments, and internal notes | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
+| **API-19** | API | AC-16 | IT Staff claims ticket ownership | HTTP 200 OK, updating `ticketOwnerId` to current staff user | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
+| **API-20** | API | AC-17 | IT Staff modifies operational `itPriority` | HTTP 200 OK, updating `itPriority` independently of requested | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
+| **API-21** | API | AC-18 | Valid status transition (`NEW` -> `OPEN`) | HTTP 200 OK, status updated | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
+| **API-22** | API | AC-18 | Invalid status transition (`NEW` -> `IN_PROGRESS` rejected) | HTTP 400 Bad Request (`INVALID_STATUS_TRANSITION`) | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
+| **API-23** | API | AC-19 | IT Staff creates private Internal Note | HTTP 201 Created, internal note saved | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
+| **API-24** | Security | AC-19 | Requester attempts to create or read Internal Note | HTTP 403 Forbidden; note content strictly concealed | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
 | **API-25** | API | AC-20 | Admin creates user with initial password | HTTP 201 Created, `mustChangePassword = true` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | **API-26** | Security | AC-21 | Admin attempts self-deactivation | HTTP 400 Bad Request (`CANNOT_DEACTIVATE_SELF`) | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | **API-27** | Security | AC-22 | Admin attempts to deactivate the last active administrator | HTTP 400 Bad Request (`LAST_ADMIN_PROTECTED`) | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
@@ -58,7 +58,7 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **UI-03** | Component | AC-07 | Role-based navigation renders appropriate tabs per role | Requester sees My Tickets; Staff sees Queue; Admin sees Users | `client/tests/lab-03/Navbar.test.tsx` | Pass |
 | **UI-04** | Component | AC-10, AC-11 | Public comments stream and problem resolved indication | Discussion stream with author role badges, comment posting, and problem resolved indication | `client/tests/lab-03/TicketComments.test.tsx` | Pass |
 | **UI-05** | Component | AC-12 | Staff ticket queue renders filter bar, data table, pagination | Filter interactions, sort header toggles, empty queue state | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
-| **UI-06** | Component | AC-15 | Staff ticket detail renders operational controls & notes | Dropdown edits, public comment stream, amber internal notes | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
+| **UI-06** | Component | AC-15 | Staff ticket detail renders operational controls & notes | Dropdown edits, public comment stream, amber internal notes | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Pass |
 | **UI-07** | Component | AC-20 | Admin user management renders user table and creation drawer | User creation, role change, self-deactivation disabled toggle | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
 | **E2E-01** | E2E | AC-01..06 | Authentication, inactive account, and first-login password change | Complete browser journey across viewports | `e2e/lab-03/authentication.spec.ts` | Planned |
 | **E2E-02** | E2E | AC-08..19 | Requester creates ticket -> Staff claims, prioritizes, notes, resolves | End-to-end multi-role operational lifecycle | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
@@ -84,11 +84,11 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **AC-12** | IT Staff Ticket Queue Search | `API-15`, `UI-05`, `E2E-02` | **Pass** |
 | **AC-13** | IT Staff Queue Multi-Criteria Filters | `API-16`, `UI-05`, `E2E-02` | **Pass** |
 | **AC-14** | IT Staff Queue Ownership Filtering | `API-17`, `UI-05`, `E2E-02` | **Pass** |
-| **AC-15** | IT Staff Ticket Detail Retrieval | `API-18`, `UI-06`, `E2E-02` | **Planned** |
-| **AC-16** | Ticket Ownership Claiming & Reassignment | `API-19`, `UI-06`, `E2E-02` | **Planned** |
-| **AC-17** | Operational IT Priority Modification | `API-20`, `UI-06`, `E2E-02` | **Planned** |
-| **AC-18** | Governed Status Transitions (8 Statuses) | `UNIT-02`, `API-21`, `API-22`, `UI-06`, `E2E-02` | **Planned** |
-| **AC-19** | Private Internal Notes Secrecy (403 for Requester) | `API-23`, `API-24`, `UI-06`, `E2E-02` | **Planned** |
+| **AC-15** | IT Staff Ticket Detail Retrieval | `API-18`, `UI-06`, `E2E-02` | **Pass** |
+| **AC-16** | Ticket Ownership Claiming & Reassignment | `API-19`, `UI-06`, `E2E-02` | **Pass** |
+| **AC-17** | Operational IT Priority Modification | `API-20`, `UI-06`, `E2E-02` | **Pass** |
+| **AC-18** | Governed Status Transitions (8 Statuses) | `UNIT-02`, `API-21`, `API-22`, `UI-06`, `E2E-02` | **Pass** |
+| **AC-19** | Private Internal Notes Secrecy (403 for Requester) | `API-23`, `API-24`, `UI-06`, `E2E-02` | **Pass** |
 | **AC-20** | Admin User Creation with Initial Password | `API-25`, `UI-07`, `E2E-03` | **Planned** |
 | **AC-21** | Admin Self-Deactivation Prevention | `API-26`, `UI-07`, `E2E-03` | **Planned** |
 | **AC-22** | Protection of Last Active Administrator | `API-27`, `UI-07`, `E2E-03` | **Planned** |

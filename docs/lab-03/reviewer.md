@@ -14,7 +14,8 @@
 | #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
-| #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Ready for Review** |
+| #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Changes Addressed & Merged** |
+| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Ready for Review** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -289,6 +290,22 @@
      - The central error handler now uniformly emits `code: "INTERNAL_SERVER_ERROR"` along with `correlationId` and sanitized messaging for all unhandled application errors, bringing the runtime 100% into agreement with BR-22.
   3. Verification:
      - Full test suites re-run and passing: 128/128 server tests (17 files), 59/59 client tests (13 files).
+  ```
+
+---
+
+#### PR #5 (`lab3-feature/5-staff-ticket-detail`)
+
+- **Reviewer comment I received:**
+
+  ```text
+  [Awaiting review from partner @kmood-Sakura]
+  ```
+
+- **How I responded:**
+
+  ```text
+  [To be updated upon receiving partner review comments]
   ```
 
 ---
