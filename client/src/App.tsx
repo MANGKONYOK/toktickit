@@ -11,6 +11,7 @@ import TicketDetail from "./components/TicketDetail.js";
 import Login from "./components/Login.js";
 import ChangePasswordModal from "./components/ChangePasswordModal.js";
 import StaffTicketQueue from "./components/StaffTicketQueue.js";
+import StaffTicketDetail from "./components/StaffTicketDetail.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -107,7 +108,7 @@ function MainContent() {
         {/* Staff Queue */}
         {activeTab === "staff-queue" &&
           (selectedTicketId !== null ? (
-            <TicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
+            <StaffTicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
           ) : (
             <StaffTicketQueue onSelectTicket={(id) => setSelectedTicketId(id)} />
           ))}

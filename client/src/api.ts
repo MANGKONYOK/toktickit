@@ -1,7 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-export type TicketStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" | "CANCELLED";
+export type TicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
 
 export interface RequesterUser {
   id: number;
@@ -518,4 +526,220 @@ export async function fetchStaffTickets(
   }
 
   return res.json();
-}
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3 Feature 5 — Staff Ticket Detail, Lifecycle & Notes APIs
+// ---------------------------------------------------------------------------
+
+export interface InternalNoteItem {
+  id: number;
+  ticketId: number;
+  authorId: number;
+  authorName: string;
+  authorRole: "REQUESTER" | "IT_STAFF" | "ADMIN";
+  content: string;
+  createdAt: string;
+}
+
+export interface StaffTicketDetail {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  description: string;
+  requestedPriority: Priority;
+  itPriority: Priority;
+  priority: Priority;
+  status: TicketStatus;
+  currentStatus: TicketStatus;
+  resolvedByRequester: boolean;
+  requester: {
+    id: number;
+    fullName: string;
+    email: string;
+    department?: string | null;
+    role: string;
+  };
+  category: {
+    id: number;
+    name: string;
+  };
+  relatedSystem: {
+    id: number;
+    name: string;
+  };
+  assignedStaff?: {
+    id: number;
+    fullName: string;
+    email: string;
+    role: string;
+  } | null;
+  ticketOwnerId?: number | null;
+  ticketOwner: string;
+  assignedOwnerName?: string | null;
+  assignedOwnerId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  attachments: Array<{
+    id: number;
+    fileName: string;
+    originalName: string;
+    mimeType: string;
+    fileSize: number;
+    uploadedById: number;
+    uploadedAt: string;
+    removedAt?: string | null;
+    removalReason?: string | null;
+  }>;
+  comments: CommentItem[];
+  internalNotes: InternalNoteItem[];
+}
+
+export async function fetchStaffTicketDetail(
+  ticketId: number
+): Promise<{ ticket: StaffTicketDetail }> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to fetch staff ticket detail (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function assignTicketOwner(
+  ticketId: number,
+  ticketOwnerId: number | null
+): Promise<{
+  ticket: { id: number; ticketOwnerId: number | null; assignedOwnerName: string | null };
+  message: string;
+}> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/assign`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ ticketOwnerId }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to update ticket ownership (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function updateTicketPriority(
+  ticketId: number,
+  itPriority: Priority
+): Promise<{
+  ticket: { id: number; itPriority: Priority };
+  message: string;
+}> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/priority`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ itPriority }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to update IT priority (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function transitionTicketStatus(
+  ticketId: number,
+  status: TicketStatus
+): Promise<{
+  ticket: { id: number; status: TicketStatus; currentStatus: TicketStatus };
+  message: string;
+}> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to transition status (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function createInternalNote(
+  ticketId: number,
+  content: string
+): Promise<{
+  note: InternalNoteItem;
+  message?: string;
+}> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to add internal note (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function fetchInternalNotes(
+  ticketId: number
+): Promise<{ notes: InternalNoteItem[] }> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/notes`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to fetch internal notes (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
