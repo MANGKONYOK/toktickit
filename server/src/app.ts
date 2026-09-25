@@ -2016,13 +2016,464 @@ app.get(
 // ---------------------------------------------------------------------------
 // Lab 3 Administrator Endpoints
 // ---------------------------------------------------------------------------
+
+// GET /api/admin/users - List users with optional substring search and role filter
 app.get(
   "/api/admin/users",
   requireAuth,
   requirePasswordChangeClear,
   requireRole(Role.ADMIN),
-  async (_req: Request, res: Response) => {
-    res.status(200).json({ users: [] });
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const prisma = getPrisma();
+
+    try {
+      const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+      const roleQuery = typeof req.query.role === "string" ? req.query.role.trim() : undefined;
+
+      const where: any = {};
+
+      if (roleQuery && roleQuery !== "ALL") {
+        if (!Object.values(Role).includes(roleQuery as Role)) {
+          res.status(400).json({
+            error: {
+              code: "INVALID_ROLE",
+              message: `Role must be one of: ${Object.values(Role).join(", ")}`,
+              correlationId,
+            },
+          });
+          return;
+        }
+        where.role = roleQuery as Role;
+      }
+
+      if (search && search.length > 0) {
+        where.OR = [
+          { fullName: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
+      const users = await prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          isActive: true,
+          mustChangePassword: true,
+          department: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: [{ id: "asc" }],
+      });
+
+      res.status(200).json({
+        users: users.map((u) => ({
+          ...u,
+          createdAt: u.createdAt.toISOString(),
+          updatedAt: u.updatedAt.toISOString(),
+        })),
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to list admin users:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to list users",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// POST /api/admin/users - Create user with initial password (mustChangePassword = true)
+app.post(
+  "/api/admin/users",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const prisma = getPrisma();
+
+    try {
+      const { fullName, email, role, initialPassword, department, isActive } = req.body || {};
+
+      const fieldErrors: Record<string, string> = {};
+
+      if (!fullName || typeof fullName !== "string" || fullName.trim().length === 0) {
+        fieldErrors.fullName = "Full name is required";
+      } else if (fullName.trim().length > 100) {
+        fieldErrors.fullName = "Full name cannot exceed 100 characters";
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || typeof email !== "string" || !emailRegex.test(email.trim())) {
+        fieldErrors.email = "A valid email address is required";
+      }
+
+      if (!role || !Object.values(Role).includes(role as Role)) {
+        fieldErrors.role = `Role must be one of: ${Object.values(Role).join(", ")}`;
+      }
+
+      if (!initialPassword || typeof initialPassword !== "string") {
+        fieldErrors.initialPassword = "An initial password is required";
+      } else {
+        const complexity = validatePasswordComplexity(initialPassword);
+        if (!complexity.isValid) {
+          fieldErrors.initialPassword =
+            "Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a digit, and a special symbol (@$!%*?&#^_-)";
+        }
+      }
+
+      if (Object.keys(fieldErrors).length > 0) {
+        res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input payload",
+            fieldErrors,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const existingUser = await prisma.user.findFirst({
+        where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      });
+
+      if (existingUser) {
+        res.status(409).json({
+          error: {
+            code: "EMAIL_ALREADY_EXISTS",
+            message: "A user with this email address already exists",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const passwordHash = await bcrypt.hash(initialPassword, 10);
+      const user = await prisma.user.create({
+        data: {
+          fullName: fullName.trim(),
+          email: normalizedEmail,
+          role: role as Role,
+          passwordHash,
+          mustChangePassword: true,
+          department: department && typeof department === "string" ? department.trim() : null,
+          isActive: isActive !== undefined ? Boolean(isActive) : true,
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          isActive: true,
+          mustChangePassword: true,
+          department: true,
+          createdAt: true,
+        },
+      });
+
+      res.status(201).json({
+        user: {
+          ...user,
+          createdAt: user.createdAt.toISOString(),
+        },
+        message: "User created successfully.",
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to create user:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create user",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// PATCH /api/admin/users/:id - Edit user profile, role, and active status with safety guardrails
+app.patch(
+  "/api/admin/users/:id",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const prisma = getPrisma();
+
+    try {
+      const targetId = parseInt(req.params.id, 10);
+      if (isNaN(targetId) || targetId <= 0) {
+        res.status(400).json({
+          error: {
+            code: "INVALID_ID",
+            message: "A valid positive integer user id is required",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetId },
+      });
+
+      if (!targetUser) {
+        res.status(404).json({
+          error: {
+            code: "USER_NOT_FOUND",
+            message: "User not found",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const { fullName, email, role, department, isActive } = req.body || {};
+
+      // Guardrail 1 (BR-18): Self-deactivation prevention
+      if (isActive === false && targetUser.id === req.user!.id) {
+        res.status(400).json({
+          error: {
+            code: "CANNOT_DEACTIVATE_SELF",
+            message: "Administrators cannot deactivate their own account",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      // Guardrail 2 (BR-19): Protection of last active administrator
+      const isTargetActiveAdmin = targetUser.role === Role.ADMIN && targetUser.isActive === true;
+      const isDeactivating = isActive === false;
+      const isDemotingRole = role !== undefined && role !== Role.ADMIN;
+
+      if (isTargetActiveAdmin && (isDeactivating || isDemotingRole)) {
+        const activeAdminCount = await prisma.user.count({
+          where: { role: Role.ADMIN, isActive: true },
+        });
+
+        if (activeAdminCount <= 1) {
+          res.status(400).json({
+            error: {
+              code: "LAST_ADMIN_PROTECTED",
+              message: "Cannot deactivate or demote the last active administrator",
+              correlationId,
+            },
+          });
+          return;
+        }
+      }
+
+      const data: any = {};
+
+      if (fullName !== undefined) {
+        if (typeof fullName !== "string" || fullName.trim().length === 0) {
+          res.status(400).json({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Full name cannot be empty",
+              correlationId,
+            },
+          });
+          return;
+        }
+        data.fullName = fullName.trim();
+      }
+
+      if (email !== undefined) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (typeof email !== "string" || !emailRegex.test(email.trim())) {
+          res.status(400).json({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "A valid email address is required",
+              correlationId,
+            },
+          });
+          return;
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        if (normalizedEmail !== targetUser.email.toLowerCase()) {
+          const duplicate = await prisma.user.findFirst({
+            where: {
+              email: { equals: normalizedEmail, mode: "insensitive" },
+              id: { not: targetId },
+            },
+          });
+
+          if (duplicate) {
+            res.status(409).json({
+              error: {
+                code: "EMAIL_ALREADY_EXISTS",
+                message: "Email is already in use by another user",
+                correlationId,
+              },
+            });
+            return;
+          }
+          data.email = normalizedEmail;
+        }
+      }
+
+      if (role !== undefined) {
+        if (!Object.values(Role).includes(role as Role)) {
+          res.status(400).json({
+            error: {
+              code: "INVALID_ROLE",
+              message: `Role must be one of: ${Object.values(Role).join(", ")}`,
+              correlationId,
+            },
+          });
+          return;
+        }
+        data.role = role as Role;
+      }
+
+      if (department !== undefined) {
+        data.department = department && typeof department === "string" ? department.trim() : null;
+      }
+
+      if (isActive !== undefined) {
+        data.isActive = Boolean(isActive);
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: targetId },
+        data,
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          isActive: true,
+          mustChangePassword: true,
+          department: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      res.status(200).json({
+        user: {
+          ...updatedUser,
+          createdAt: updatedUser.createdAt.toISOString(),
+          updatedAt: updatedUser.updatedAt.toISOString(),
+        },
+        message: "User updated successfully.",
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to update user:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update user",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// POST /api/admin/users/:id/reset-password - Reset password and enforce mustChangePassword = true
+app.post(
+  "/api/admin/users/:id/reset-password",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const prisma = getPrisma();
+
+    try {
+      const targetId = parseInt(req.params.id, 10);
+      if (isNaN(targetId) || targetId <= 0) {
+        res.status(400).json({
+          error: {
+            code: "INVALID_ID",
+            message: "A valid positive integer user id is required",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetId },
+      });
+
+      if (!targetUser) {
+        res.status(404).json({
+          error: {
+            code: "USER_NOT_FOUND",
+            message: "User not found",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const { newInitialPassword } = req.body || {};
+
+      if (!newInitialPassword || typeof newInitialPassword !== "string") {
+        res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "A new initial password is required",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const complexity = validatePasswordComplexity(newInitialPassword);
+      if (!complexity.isValid) {
+        res.status(400).json({
+          error: {
+            code: "INVALID_PASSWORD_COMPLEXITY",
+            message:
+              "Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a digit, and a special symbol (@$!%*?&#^_-)",
+            checklist: complexity.checklist,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const passwordHash = await bcrypt.hash(newInitialPassword, 10);
+
+      await prisma.user.update({
+        where: { id: targetId },
+        data: {
+          passwordHash,
+          mustChangePassword: true,
+        },
+      });
+
+      res.status(200).json({
+        message: "Password reset successfully. User must change password at next login.",
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to reset user password:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to reset password",
+          correlationId,
+        },
+      });
+    }
   }
 );
 

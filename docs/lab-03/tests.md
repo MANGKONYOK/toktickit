@@ -50,16 +50,16 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **API-22** | API | AC-18 | Invalid status transition (`NEW` -> `IN_PROGRESS` rejected) | HTTP 400 Bad Request (`INVALID_STATUS_TRANSITION`) | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass |
 | **API-23** | API | AC-19 | IT Staff creates private Internal Note | HTTP 201 Created, internal note saved | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
 | **API-24** | Security | AC-19 | Requester attempts to create or read Internal Note | HTTP 403 Forbidden; note content strictly concealed | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
-| **API-25** | API | AC-20 | Admin creates user with initial password | HTTP 201 Created, `mustChangePassword = true` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| **API-26** | Security | AC-21 | Admin attempts self-deactivation | HTTP 400 Bad Request (`CANNOT_DEACTIVATE_SELF`) | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| **API-27** | Security | AC-22 | Admin attempts to deactivate the last active administrator | HTTP 400 Bad Request (`LAST_ADMIN_PROTECTED`) | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| **API-25** | API | AC-20 | Admin creates user with initial password | HTTP 201 Created, `mustChangePassword = true` | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| **API-26** | Security | AC-21 | Admin attempts self-deactivation | HTTP 400 Bad Request (`CANNOT_DEACTIVATE_SELF`) | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| **API-27** | Security | AC-22 | Admin attempts to deactivate the last active administrator | HTTP 400 Bad Request (`LAST_ADMIN_PROTECTED`) | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | **UI-01** | Component | AC-01 | Login screen renders form and submits credentials | Input binding, busy state spinner, error banner presentation | `client/tests/lab-03/Login.test.tsx` | Pass |
 | **UI-02** | Component | AC-04 | Mandatory password change modal intercepts navigation | Form validation checklist, disables submit until valid | `client/tests/lab-03/ChangePassword.test.tsx` | Pass |
 | **UI-03** | Component | AC-07 | Role-based navigation renders appropriate tabs per role | Requester sees My Tickets; Staff sees Queue; Admin sees Users | `client/tests/lab-03/Navbar.test.tsx` | Pass |
 | **UI-04** | Component | AC-10, AC-11 | Public comments stream and problem resolved indication | Discussion stream with author role badges, comment posting, and problem resolved indication | `client/tests/lab-03/TicketComments.test.tsx` | Pass |
 | **UI-05** | Component | AC-12 | Staff ticket queue renders filter bar, data table, pagination | Filter interactions, sort header toggles, empty queue state | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
 | **UI-06** | Component | AC-15 | Staff ticket detail renders operational controls & notes | Dropdown edits, public comment stream, amber internal notes | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Pass |
-| **UI-07** | Component | AC-20 | Admin user management renders user table and creation drawer | User creation, role change, self-deactivation disabled toggle | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
+| **UI-07** | Component | AC-20 | Admin user management renders user table and creation drawer | User creation, role change, self-deactivation disabled toggle | `client/tests/lab-03/UserManagement.test.tsx` | Pass |
 | **E2E-01** | E2E | AC-01..06 | Authentication, inactive account, and first-login password change | Complete browser journey across viewports | `e2e/lab-03/authentication.spec.ts` | Planned |
 | **E2E-02** | E2E | AC-08..19 | Requester creates ticket -> Staff claims, prioritizes, notes, resolves | End-to-end multi-role operational lifecycle | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
 | **E2E-03** | E2E | AC-20..22 | Admin user creation, safety guardrails, and new user login change | User management workflow and security validation | `e2e/lab-03/user-administration.spec.ts` | Planned |
@@ -89,9 +89,9 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **AC-17** | Operational IT Priority Modification | `API-20`, `UI-06`, `E2E-02` | **Pass** |
 | **AC-18** | Governed Status Transitions (8 Statuses) | `UNIT-02`, `API-21`, `API-22`, `UI-06`, `E2E-02` | **Pass** |
 | **AC-19** | Private Internal Notes Secrecy (403 for Requester) | `API-23`, `API-24`, `UI-06`, `E2E-02` | **Pass** |
-| **AC-20** | Admin User Creation with Initial Password | `API-25`, `UI-07`, `E2E-03` | **Planned** |
-| **AC-21** | Admin Self-Deactivation Prevention | `API-26`, `UI-07`, `E2E-03` | **Planned** |
-| **AC-22** | Protection of Last Active Administrator | `API-27`, `UI-07`, `E2E-03` | **Planned** |
+| **AC-20** | Admin User Creation with Initial Password | `API-25`, `UI-07`, `E2E-03` | **Pass** |
+| **AC-21** | Admin Self-Deactivation Prevention | `API-26`, `UI-07`, `E2E-03` | **Pass** |
+| **AC-22** | Protection of Last Active Administrator | `API-27`, `UI-07`, `E2E-03` | **Pass** |
 
 ---
 

@@ -15,7 +15,8 @@
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
 | #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Changes Addressed & Merged** |
-| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Ready** |
+| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Merged** |
+| #6 | `lab3-feature/6-admin-user-mgmt` | `lab3-staging` | Administrator User Management, Safety Guardrails (Self-Deactivation & Last Admin Protection), Password Reset, and UI-07 User Administration Screen | **Ready for Review** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -341,6 +342,22 @@
      - Ran a full repository scan to confirm that no in-repo source or documentation files contain local `file:///` URIs.
   3. Security & Privacy:
      - Ensured that local workstation folder paths are eliminated from the public pull request interface and properly resolve within the GitHub web UI for reviewers and markers.
+  ```
+
+---
+
+#### PR #6 (`lab3-feature/6-admin-user-mgmt`)
+
+- **Reviewer comment I received:**
+
+  ```text
+  [Awaiting review from partner @kmood-Sakura]
+  ```
+
+- **How I responded:**
+
+  ```text
+  [To be updated upon receiving partner review comments]
   ```
 
 ---
