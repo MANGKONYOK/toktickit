@@ -15,7 +15,7 @@
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
 | #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Changes Addressed & Merged** |
-| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Ready for Review** |
+| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Ready** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -299,13 +299,48 @@
 - **Reviewer comment I received:**
 
   ```text
-  [Awaiting review from partner @kmood-Sakura]
+  Read 098e23e against lab3-staging — 12 files, +2538 −21. This is the feature with the most to get wrong and the confidentiality rule holds by construction, not by a check someone could delete. Nothing blocks; the one row is in the PR description, not the code.
+
+  Features status:
+  1. BR-15 holds structurally — every internalNote touch sits on a staff-gated route, the aliases included, and the requester's own ticket detail never mentions them [pass]
+  2. status-transition.ts encodes BR-14 exactly — 17 edges, two terminal states, same-state refused — with 16 unit tests [pass]
+  3. BR-12 is enforced where it matters, and every countable claim in your body holds [pass]
+  4. Eleven file:///c:/Users/... links in the PR description [warning]
+
+  Nothing blocks the merge.
+
+  Issues:
+  none
+
+  Warning #4:
+  - The description links specification.md, api-spec.md and nine source files as file:///c:/Users/KITTIPHAT%20NOIKATE/Desktop/...: On GitHub every one of them is a dead link, and they publish your local directory layout to the reviewer and the marker; the repository's own documents are clean, so this is the description only — relative links like docs/lab-03/specification.md resolve properly on the PR page.
+
+  Notes:
+  - On row 1: internalNote appears four times in app.ts, and all four are behind requireRole(Role.IT_STAFF, Role.ADMIN) — the detail include at :1474, its mapping at :1540, the status-change audit note at :1881, and the notes read at :1967. /api/tickets/:id/internal-notes is gated identically to /api/staff/tickets/:id/notes, which is the alias I expected to be the hole. A requester's GET /api/tickets/:id never names the relation at all, so there is no filter to forget.
+  - On row 3: assignment rejects anyone who is not an active IT_STAFF or ADMIN with a 400, and the counts are 16 unit, 22 API and 8 component tests, with UNIT-02, API-18 through API-24, UI-06 and AC-15 through AC-19 all reading Pass in tests.md.
   ```
 
 - **How I responded:**
 
   ```text
-  [To be updated upon receiving partner review comments]
+  Addressed Warning #4 completely and updated the PR #5 description on GitHub:
+  1. Converted all absolute `file:///c:/Users/...` hyperlinks in the PR #5 description to standard repository-relative GitHub paths:
+     - `docs/lab-03/specification.md`
+     - `docs/lab-03/api-spec.md`
+     - `docs/lab-03/ui-spec.md`
+     - `server/src/utils/status-transition.ts`
+     - `server/tests/lab-03/status-transition.unit.test.ts`
+     - `server/src/app.ts`
+     - `client/src/components/StaffTicketDetail.tsx`
+     - `client/src/api.ts`
+     - `client/src/App.tsx`
+     - `docs/lab-03/tests.md`
+     - `docs/lab-03/reviewer.md`
+     - `docs/lab-03/ai-use.md`
+  2. Verified repository integrity:
+     - Ran a full repository scan to confirm that no in-repo source or documentation files contain local `file:///` URIs.
+  3. Security & Privacy:
+     - Ensured that local workstation folder paths are eliminated from the public pull request interface and properly resolve within the GitHub web UI for reviewers and markers.
   ```
 
 ---
