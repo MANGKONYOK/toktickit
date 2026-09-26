@@ -2253,28 +2253,6 @@ app.patch(
         return;
       }
 
-      // Guardrail 2 (BR-19): Protection of last active administrator
-      const isTargetActiveAdmin = targetUser.role === Role.ADMIN && targetUser.isActive === true;
-      const isDeactivating = isActive === false;
-      const isDemotingRole = role !== undefined && role !== Role.ADMIN;
-
-      if (isTargetActiveAdmin && (isDeactivating || isDemotingRole)) {
-        const activeAdminCount = await prisma.user.count({
-          where: { role: Role.ADMIN, isActive: true },
-        });
-
-        if (activeAdminCount <= 1) {
-          res.status(400).json({
-            error: {
-              code: "LAST_ADMIN_PROTECTED",
-              message: "Cannot deactivate or demote the last active administrator",
-              correlationId,
-            },
-          });
-          return;
-        }
-      }
-
       const data: any = {};
 
       if (fullName !== undefined) {
@@ -2349,20 +2327,40 @@ app.patch(
         data.isActive = Boolean(isActive);
       }
 
-      const updatedUser = await prisma.user.update({
-        where: { id: targetId },
-        data,
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          isActive: true,
-          mustChangePassword: true,
-          department: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+      // Execute Guardrail 2 (BR-19) and user update atomically inside a Prisma transaction
+      // to prevent concurrent race conditions (e.g., two administrators simultaneously demoting each other).
+      const updatedUser = await prisma.$transaction(async (tx) => {
+        const isTargetActiveAdmin = targetUser.role === Role.ADMIN && targetUser.isActive === true;
+        const isDeactivating = isActive === false;
+        const isDemotingRole = role !== undefined && role !== Role.ADMIN;
+
+        if (isTargetActiveAdmin && (isDeactivating || isDemotingRole)) {
+          const activeAdminCount = await tx.user.count({
+            where: { role: Role.ADMIN, isActive: true },
+          });
+
+          if (activeAdminCount <= 1) {
+            const err = new Error("Cannot deactivate or demote the last active administrator");
+            (err as any).code = "LAST_ADMIN_PROTECTED";
+            throw err;
+          }
+        }
+
+        return await tx.user.update({
+          where: { id: targetId },
+          data,
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            isActive: true,
+            mustChangePassword: true,
+            department: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
       });
 
       res.status(200).json({
@@ -2373,7 +2371,17 @@ app.patch(
         },
         message: "User updated successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "LAST_ADMIN_PROTECTED") {
+        res.status(400).json({
+          error: {
+            code: "LAST_ADMIN_PROTECTED",
+            message: "Cannot deactivate or demote the last active administrator",
+            correlationId,
+          },
+        });
+        return;
+      }
       console.error(`[${correlationId}] Failed to update user:`, error);
       res.status(500).json({
         error: {
