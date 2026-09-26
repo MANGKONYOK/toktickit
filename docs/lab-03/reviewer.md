@@ -15,7 +15,8 @@
 | #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
 | #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Changes Addressed & Merged** |
-| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Ready** |
+| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Merged** |
+| #6 | `lab3-feature/6-admin-user-mgmt` | `lab3-staging` | Administrator User Management, Safety Guardrails (Self-Deactivation & Last Admin Protection), Password Reset, and UI-07 User Administration Screen | **Changes Addressed & Ready** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -341,6 +342,61 @@
      - Ran a full repository scan to confirm that no in-repo source or documentation files contain local `file:///` URIs.
   3. Security & Privacy:
      - Ensured that local workstation folder paths are eliminated from the public pull request interface and properly resolve within the GitHub web UI for reviewers and markers.
+  ```
+
+---
+
+#### PR #6 (`lab3-feature/6-admin-user-mgmt`)
+
+- **Reviewer comment I received:**
+
+  ```text
+  Read `bc34911` against `lab3-staging` — 9 files, +2266 −21 — and went at the guardrails rather than the screens, since that is where this feature can actually hurt. Both of them hold, including the half that usually does not. One question, nothing blocking.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | BR-19 covers demotion as well as deactivation, and counts active admins rather than all | pass |
+  | 2 | BR-17 is genuinely case-insensitive, on edit as well as create | pass |
+  | 3 | The rest of the rules hold, and every count in your body is real | pass |
+  | 4 | BR-19 reads the count and writes in two steps | warning |
+
+  **Nothing blocks the merge.**
+
+  #### Issues
+
+  none
+
+  #### Warning
+
+  | # | warning | advice |
+  | - | ------- | ------ |
+  | 4 | `app.ts:2262` counts active administrators and `:2280` onward performs the update, with nothing holding the two together | Two administrators demoting each other at the same moment would both read a count of two and both be allowed, and the rule that cannot fail is the one worth making structural — is a `$transaction` with the count inside it worth it here, or is a single operator enough of an answer? |
+
+  On row 1: `isDemotingRole` is tested alongside `isDeactivating`, so promoting the last admin out of the role is refused the same way deactivating them is — that is the branch I expected to be missing. The count is scoped to `role: ADMIN, isActive: true` rather than to all admins, which is the difference between the rule working and only appearing to.
+
+  On row 2: both the create and the edit path normalise and query with `mode: "insensitive"`, and the edit path excludes the target's own id, so an administrator fixing the casing of their own address is not told it is taken.
+
+  On row 3: no user deletion route exists — the only `app.delete` on the branch is Lab 2's attachment soft-remove — `passwordHash` is written but never projected, `GET /api/admin/users` selects an explicit safe set, all four routes carry `requireAuth` → `requirePasswordChangeClear` → `requireRole(ADMIN)`, complexity is checked on create and on reset, and `role` is validated against the enum on both so a bad value is a 400 rather than a 500. Counts: 20 API and 8 component tests, with `API-25`, `API-26`, `API-27`, `UI-07` and `AC-20` through `AC-22` all reading `Pass`.
+
+  The relative links in this description work now.
+
+  Do you agree?
+  ```
+
+- **How I responded:**
+
+  ```text
+  Agreed completely with the assessment and the structural recommendation for Warning #4:
+  1. Structural Atomicity via prisma.$transaction (Warning #4):
+     - Wrapped the active administrator count check (tx.user.count({ where: { role: Role.ADMIN, isActive: true } })) and the target user update (tx.user.update(...)) within an atomic interactive Prisma transaction: prisma.$transaction(async (tx) => { ... }).
+     - If the target is an active administrator and the operation entails deactivation (isActive === false) or demotion (role !== ADMIN), the count check is evaluated inside tx. If activeAdminCount <= 1, an error with code "LAST_ADMIN_PROTECTED" is thrown, immediately aborting the transaction before any write occurs.
+     - The route error handler intercepts error.code === "LAST_ADMIN_PROTECTED" and responds with HTTP 400 Bad Request, preserving consistent API semantics while completely closing the TOCTOU concurrency race window where two admins demoting each other simultaneously could both observe a count of 2.
+  2. Verification:
+     - All 20 server test files (197/197 tests, including all 20 Administrator User Management tests) pass.
+     - All 15 client test files (75/75 tests, including all 8 UserManagement component tests) pass.
+     - Confirmed that relative links and schema protections hold without defect.
   ```
 
 ---
