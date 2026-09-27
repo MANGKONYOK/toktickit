@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import multer from "multer";
 import fs from "fs";
-import { Role, Priority, TicketStatus } from "@prisma/client";
+import { Role, Priority, TicketStatus, Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma.js";
 import { generateTicketNumber } from "./utils/ticket-number.js";
 import { validateTicketInput, PriorityType } from "./utils/ticket-validation.js";
@@ -2328,40 +2328,46 @@ app.patch(
       }
 
       // Execute Guardrail 2 (BR-19) and user update atomically inside a Prisma transaction
-      // to prevent concurrent race conditions (e.g., two administrators simultaneously demoting each other).
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        const isTargetActiveAdmin = targetUser.role === Role.ADMIN && targetUser.isActive === true;
-        const isDeactivating = isActive === false;
-        const isDemotingRole = role !== undefined && role !== Role.ADMIN;
+      // with Serializable isolation level to eliminate write skew and concurrent lockout races
+      // (e.g., two administrators simultaneously demoting or deactivating each other).
+      const updatedUser = await prisma.$transaction(
+        async (tx) => {
+          const isTargetActiveAdmin = targetUser.role === Role.ADMIN && targetUser.isActive === true;
+          const isDeactivating = isActive === false;
+          const isDemotingRole = role !== undefined && role !== Role.ADMIN;
 
-        if (isTargetActiveAdmin && (isDeactivating || isDemotingRole)) {
-          const activeAdminCount = await tx.user.count({
-            where: { role: Role.ADMIN, isActive: true },
-          });
+          if (isTargetActiveAdmin && (isDeactivating || isDemotingRole)) {
+            const activeAdminCount = await tx.user.count({
+              where: { role: Role.ADMIN, isActive: true },
+            });
 
-          if (activeAdminCount <= 1) {
-            const err = new Error("Cannot deactivate or demote the last active administrator");
-            (err as any).code = "LAST_ADMIN_PROTECTED";
-            throw err;
+            if (activeAdminCount <= 1) {
+              const err = new Error("Cannot deactivate or demote the last active administrator");
+              (err as any).code = "LAST_ADMIN_PROTECTED";
+              throw err;
+            }
           }
-        }
 
-        return await tx.user.update({
-          where: { id: targetId },
-          data,
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            role: true,
-            isActive: true,
-            mustChangePassword: true,
-            department: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        });
-      });
+          return await tx.user.update({
+            where: { id: targetId },
+            data,
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+              isActive: true,
+              mustChangePassword: true,
+              department: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }
+      );
 
       res.status(200).json({
         user: {
@@ -2452,7 +2458,7 @@ app.post(
             code: "INVALID_PASSWORD_COMPLEXITY",
             message:
               "Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a digit, and a special symbol (@$!%*?&#^_-)",
-            checklist: complexity.checklist,
+            errors: complexity.errors,
             correlationId,
           },
         });

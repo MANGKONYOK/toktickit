@@ -16,7 +16,7 @@
 | #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
 | #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Changes Addressed & Merged** |
 | #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Merged** |
-| #6 | `lab3-feature/6-admin-user-mgmt` | `lab3-staging` | Administrator User Management, Safety Guardrails (Self-Deactivation & Last Admin Protection), Password Reset, and UI-07 User Administration Screen | **Changes Addressed & Ready** |
+| #6 | `lab3-feature/6-admin-user-mgmt` | `lab3-staging` | Administrator User Management, Safety Guardrails (Self-Deactivation & Last Admin Protection), Password Reset, and UI-07 User Administration Screen | **Changes Addressed & Approved** |
 
 *(PR entries for subsequent features will be appended step-by-step as each feature branch is opened and reviewed).*
 
@@ -397,6 +397,46 @@
      - All 20 server test files (197/197 tests, including all 20 Administrator User Management tests) pass.
      - All 15 client test files (75/75 tests, including all 8 UserManagement component tests) pass.
      - Confirmed that relative links and schema protections hold without defect.
+  ```
+
+- **Follow-up review comment received at `f716fdd`:**
+
+  ```text
+  Re-read at `f716fdd`. The guard and the write are one unit now and the error path is cleaner than what it replaced. One correction to my own advice, then I am done — a transaction alone does not close the case I described, and I should have said which kind.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | `app.ts:2332` — the count and the update are one unit, and the tagged error maps back to the same `400 LAST_ADMIN_PROTECTED` | pass |
+  | 2 | Nothing else moved — the guardrails, the safe projections and the tests are as they were | pass |
+  | 3 | The remaining gap is write skew, which the default isolation level does not prevent | warning |
+
+  **Nothing blocks the merge. Approving.**
+
+  #### Issues
+
+  none
+
+  #### Warning
+
+  | # | warning | advice |
+  | - | ------- | ------ |
+  | 3 | `prisma.$transaction` is called with no `isolationLevel`, so PostgreSQL runs it at `READ COMMITTED`; two concurrent demotions still both read a count of two, and because they write different rows neither conflicts, so both commit and leave zero active administrators | That is write skew, and a transaction boundary alone never stops it — `{ isolationLevel: Prisma.TransactionIsolationLevel.Serializable }` as the second argument does, as would locking the admin rows for the duration. My earlier question asked whether a transaction was worth it and did not say which kind, so this one is on me; is it worth taking, given no test drives two writers at once and there is one operator? |
+
+  What the transaction does buy is real and worth keeping regardless: the update can no longer land when the guard refuses, and `LAST_ADMIN_PROTECTED` now leaves through one path rather than two. That is the half that was actually loose.
+  ```
+
+- **How I responded:**
+
+  ```text
+  Addressed the isolation level enhancement to completely eliminate write skew:
+  1. Serializable Isolation Level (Warning #3):
+     - Configured `{ isolationLevel: Prisma.TransactionIsolationLevel.Serializable }` on `prisma.$transaction`.
+     - In PostgreSQL, Serializable isolation detects read/write dependencies across concurrent transactions (SSI / predicate locking) and prevents write skew. If two concurrent transactions read activeAdminCount = 2 and attempt to demote different admin accounts simultaneously, PostgreSQL detects the serialization anomaly and aborts one transaction, structurally guaranteeing that at least one active administrator remains.
+  2. Type-Check Cleanliness & Verification:
+     - Fixed TypeScript type-cast nuances in auth.api.test.ts and app.ts password complexity errors, achieving clean zero-error `tsc` compilation.
+     - 100% pass across all 20 server test suites (197/197 tests) and 15 client test suites (75/75 tests).
   ```
 
 ---
