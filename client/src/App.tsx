@@ -12,6 +12,7 @@ import Login from "./components/Login.js";
 import ChangePasswordModal from "./components/ChangePasswordModal.js";
 import StaffTicketQueue from "./components/StaffTicketQueue.js";
 import StaffTicketDetail from "./components/StaffTicketDetail.js";
+import UserManagement from "./components/UserManagement.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -113,15 +114,8 @@ function MainContent() {
             <StaffTicketQueue onSelectTicket={(id) => setSelectedTicketId(id)} />
           ))}
 
-        {/* Admin Users Placeholder for Feature 4 */}
-        {activeTab === "admin-users" && (
-          <div className="zen-card p-4 text-center" data-testid="admin-users-placeholder">
-            <h4 className="fw-bold mb-2" style={{ color: "var(--color-primary, #006B3C)" }}>
-              User Administration
-            </h4>
-            <p className="text-muted small mb-0">Administrator user management view will be active in Feature 4.</p>
-          </div>
-        )}
+        {/* Admin User Management */}
+        {activeTab === "admin-users" && <UserManagement />}
 
         {/* Requester Ticketing Lifecycle (Preserved from Lab 2) */}
         {(activeTab === "my-tickets" || activeTab === "create-ticket") &&

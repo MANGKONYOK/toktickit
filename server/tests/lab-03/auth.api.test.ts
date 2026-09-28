@@ -65,7 +65,7 @@ describe("Authentication APIs (API-01..07 / AC-01..06, BR-01..04)", () => {
       expect(res.body.message).toBe("Login successful.");
 
       // Check cookie header
-      const cookies = res.headers["set-cookie"];
+      const cookies = res.headers["set-cookie"] as unknown as string[] | undefined;
       expect(cookies).toBeDefined();
       const sessionCookie = cookies?.find((c: string) => c.includes("toktickit_session"));
       expect(sessionCookie).toBeDefined();
@@ -212,7 +212,8 @@ describe("Authentication APIs (API-01..07 / AC-01..06, BR-01..04)", () => {
       expect(logoutRes.body.message).toBe("Logout successful.");
 
       // Check that session cookie is cleared
-      const setCookie = logoutRes.headers["set-cookie"]?.join("; ") || "";
+      const rawCookies = logoutRes.headers["set-cookie"];
+      const setCookie = Array.isArray(rawCookies) ? rawCookies.join("; ") : (rawCookies || "");
       expect(setCookie.toLowerCase()).toMatch(/toktickit_session=;|(max-age=0)|(expires=thu, 01 jan 1970)/);
 
       // Verify subsequent request without session fails
