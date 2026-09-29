@@ -199,6 +199,15 @@ export default function Navbar({ activeTab, onSelectTab, onOpenLogin }: NavbarPr
               >
                 Change<span className="d-none d-sm-inline"> Requester</span>
               </button>
+
+              <button
+                type="button"
+                data-testid="nav-signin-button"
+                className="btn btn-sm btn-light fw-bold text-nowrap"
+                onClick={onOpenLogin || openSelector}
+              >
+                Sign In
+              </button>
             </div>
           ) : (
             <button

@@ -98,7 +98,7 @@ describe("TicketDetail - Public Comments & Problem Resolution (FR-06, FR-07 / AC
       },
     });
     vi.mocked(api.fetchTicketDetail).mockResolvedValue(mockTicketData);
-    vi.mocked(api.fetchComments).mockResolvedValue({ comments: mockComments });
+    vi.mocked(api.fetchComments).mockResolvedValue(mockComments);
   });
 
   it("UI-03 / AC-10: renders comments stream with author role badges and timestamps", async () => {

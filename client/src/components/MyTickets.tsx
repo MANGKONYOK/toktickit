@@ -423,7 +423,12 @@ export default function MyTickets({
                   </thead>
                   <tbody>
                     {tickets.map((ticket) => (
-                      <tr key={ticket.id} data-testid={`ticket-row-${ticket.ticketNumber}`}>
+                      <tr
+                        key={ticket.id}
+                        data-testid={`ticket-row-${ticket.ticketNumber}`}
+                        style={{ cursor: onSelectTicket ? "pointer" : "default" }}
+                        onClick={() => onSelectTicket?.(ticket.id)}
+                      >
                         <td>
                           <span className="fw-bold font-monospace" style={{ color: "var(--color-primary)" }}>
                             {ticket.ticketNumber}
@@ -461,6 +466,8 @@ export default function MyTickets({
                   <div
                     key={ticket.id}
                     className="zen-ticket-card"
+                    style={{ cursor: onSelectTicket ? "pointer" : "default" }}
+                    onClick={() => onSelectTicket?.(ticket.id)}
                     data-testid={`ticket-card-${ticket.ticketNumber}`}
                   >
                     <div className="d-flex justify-content-between align-items-center mb-2">

@@ -49,10 +49,9 @@ export default function TicketDetail({ ticketId, onBack }: TicketDetailProps) {
   const loadComments = useCallback(async () => {
     setLoadingComments(true);
     try {
-      const data = await api.fetchComments(ticketId);
-      if (data && Array.isArray(data.comments)) {
-        setComments(data.comments);
-      }
+      const data: any = await api.fetchComments(ticketId);
+      const list = Array.isArray(data) ? data : Array.isArray(data?.comments) ? data.comments : [];
+      setComments(list);
     } catch (err: any) {
       console.error("Failed to load comments:", err);
     } finally {

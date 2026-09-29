@@ -54,7 +54,7 @@ function MainContent() {
         }}
         onOpenLogin={() => setShowLoginModal(true)}
       />
-      <RequesterSelector />
+      <RequesterSelector onOpenLogin={() => setShowLoginModal(true)} />
 
       {/* Mandatory Password Change Modal */}
       {isPasswordChangeRequired && (
@@ -119,7 +119,7 @@ function MainContent() {
 
         {/* Requester Ticketing Lifecycle (Preserved from Lab 2) */}
         {(activeTab === "my-tickets" || activeTab === "create-ticket") &&
-          currentRequester &&
+          (user || currentRequester) &&
           !isSelectorOpen &&
           (selectedTicketId !== null ? (
             <TicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />

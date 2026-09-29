@@ -60,9 +60,9 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | **UI-05** | Component | AC-12 | Staff ticket queue renders filter bar, data table, pagination | Filter interactions, sort header toggles, empty queue state | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Pass |
 | **UI-06** | Component | AC-15 | Staff ticket detail renders operational controls & notes | Dropdown edits, public comment stream, amber internal notes | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Pass |
 | **UI-07** | Component | AC-20 | Admin user management renders user table and creation drawer | User creation, role change, self-deactivation disabled toggle | `client/tests/lab-03/UserManagement.test.tsx` | Pass |
-| **E2E-01** | E2E | AC-01..06 | Authentication, inactive account, and first-login password change | Complete browser journey across viewports | `e2e/lab-03/authentication.spec.ts` | Planned |
-| **E2E-02** | E2E | AC-08..19 | Requester creates ticket -> Staff claims, prioritizes, notes, resolves | End-to-end multi-role operational lifecycle | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| **E2E-03** | E2E | AC-20..22 | Admin user creation, safety guardrails, and new user login change | User management workflow and security validation | `e2e/lab-03/user-administration.spec.ts` | Planned |
+| **E2E-01** | E2E | AC-01..06 | Authentication, inactive account, and first-login password change | Complete browser journey across viewports | `e2e/lab-03/authentication.spec.ts` | Pass |
+| **E2E-02** | E2E | AC-08..19 | Requester creates ticket -> Staff claims, prioritizes, notes, resolves | End-to-end multi-role operational lifecycle | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| **E2E-03** | E2E | AC-20..22 | Admin user creation, safety guardrails, and new user login change | User management workflow and security validation | `e2e/lab-03/user-administration.spec.ts` | Pass |
 
 ---
 

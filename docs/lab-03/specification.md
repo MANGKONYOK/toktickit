@@ -404,16 +404,16 @@ All endpoints return standard JSON envelopes. Protected endpoints require valid 
 
 ### 11.1. Definition of Done Checklist
 
-- [ ] All 15 Functional Requirements (FR-01..15) and 25 Business Rules (BR-01..25) are satisfied.
-- [ ] All 22 Acceptance Criteria (AC-01..22) are mapped to automated tests with 100% pass status.
-- [ ] All existing Lab 2 Requester capabilities pass regression testing under authenticated identity.
-- [ ] Password hashing uses `bcrypt` with salt rounds $\ge 10$; plaintext passwords never stored.
-- [ ] Server catch blocks redact internal database errors and return safe HTTP 500 envelopes with UUID `correlationId`.
-- [ ] Role-Based Access Control is enforced server-side via Express middleware, returning HTTP 403.
-- [ ] Internal Notes are verified 100% confidential and inaccessible to Requesters.
-- [ ] Administrator safety guardrails (self-deactivation and last-admin protection) are verified by automated tests.
-- [ ] Zen Green design tokens and responsive layouts ($\ge 992\text{px}$, $768\text{px}-991\text{px}$, $< 768\text{px}$) are upheld with zero horizontal overflow.
-- [ ] Playwright multi-viewport automated E2E suites pass across Desktop, Tablet, and Mobile viewports.
+- [x] All 15 Functional Requirements (FR-01..15) and 25 Business Rules (BR-01..25) are satisfied.
+- [x] All 22 Acceptance Criteria (AC-01..22) are mapped to automated tests with 100% pass status.
+- [x] All existing Lab 2 Requester capabilities pass regression testing under authenticated identity.
+- [x] Password hashing uses `bcrypt` with salt rounds $\ge 10$; plaintext passwords never stored.
+- [x] Server catch blocks redact internal database errors and return safe HTTP 500 envelopes with UUID `correlationId`.
+- [x] Role-Based Access Control is enforced server-side via Express middleware, returning HTTP 403.
+- [x] Internal Notes are verified 100% confidential and inaccessible to Requesters.
+- [x] Administrator safety guardrails (self-deactivation and last-admin protection) are verified by automated tests.
+- [x] Zen Green design tokens and responsive layouts ($\ge 992\text{px}$, $768\text{px}-991\text{px}$, $< 768\text{px}$) are upheld with zero horizontal overflow.
+- [x] Playwright multi-viewport automated E2E suites pass across Desktop, Tablet, and Mobile viewports.
 
 ### 11.2. Key Technical Decisions
 

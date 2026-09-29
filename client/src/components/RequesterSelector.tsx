@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 
-export default function RequesterSelector() {
+interface RequesterSelectorProps {
+  onOpenLogin?: () => void;
+}
+
+export default function RequesterSelector({ onOpenLogin }: RequesterSelectorProps) {
+  const { user } = useAuth();
   const {
     currentRequester,
     requesters = [],
@@ -24,7 +30,7 @@ export default function RequesterSelector() {
     }
   }, [currentRequester, requesters]);
 
-  if (!isSelectorOpen) {
+  if (user || !isSelectorOpen) {
     return null;
   }
 
@@ -93,13 +99,24 @@ export default function RequesterSelector() {
             {error && (
               <div className="alert alert-danger text-start small mb-4">
                 <strong>Error:</strong> {error}
-                <div className="mt-2">
+                <div className="mt-2 d-flex gap-2">
                   <button
                     type="button"
                     className="btn btn-sm btn-outline-danger"
                     onClick={() => refreshRequesters()}
                   >
                     Retry Loading
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="selector-signin-btn"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => {
+                      closeSelector();
+                      onOpenLogin?.();
+                    }}
+                  >
+                    Sign In with Credentials
                   </button>
                 </div>
               </div>
@@ -166,24 +183,41 @@ export default function RequesterSelector() {
                   </div>
                 </div>
 
-                <div className="d-flex justify-content-end gap-2">
-                  {currentRequester && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary px-3"
-                      onClick={closeSelector}
-                    >
-                      Cancel
-                    </button>
-                  )}
+                <div className="d-flex justify-content-between align-items-center gap-2">
                   <button
-                    type="submit"
-                    data-testid="continue-requester-btn"
-                    className="btn btn-zen-primary touch-target px-4"
-                    disabled={selectedId === "" || safeList.length === 0}
+                    type="button"
+                    data-testid="selector-signin-btn"
+                    className="btn btn-outline-success touch-target px-3"
+                    onClick={() => {
+                      if (safeList.length > 0 && !currentRequester) {
+                        setRequester(safeList[0]);
+                      }
+                      closeSelector();
+                      onOpenLogin?.();
+                    }}
                   >
-                    Continue &rarr;
+                    Sign In with Credentials
                   </button>
+
+                  <div className="d-flex gap-2">
+                    {currentRequester && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary px-3"
+                        onClick={closeSelector}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      data-testid="continue-requester-btn"
+                      className="btn btn-zen-primary touch-target px-4"
+                      disabled={selectedId === "" || safeList.length === 0}
+                    >
+                      Continue &rarr;
+                    </button>
+                  </div>
                 </div>
               </form>
             )}
