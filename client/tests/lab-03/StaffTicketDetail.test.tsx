@@ -91,7 +91,6 @@ describe("Staff Ticket Detail Component (UI-06 / AC-15..19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.fetchStaffTicketDetail).mockResolvedValue({ ticket: { ...mockTicketDetail } });
-    vi.mocked(api.fetchAttachments).mockResolvedValue([]);
   });
 
   const renderComponent = (props: { ticketId?: number; onBack?: () => void } = {}) => {

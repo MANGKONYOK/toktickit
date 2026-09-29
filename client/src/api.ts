@@ -48,7 +48,7 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   category?: Category;
-  relatedSystem?: RelatedSystem;
+  relatedSystem?: RelatedSystem | null;
   requester?: RequesterUser;
 }
 
@@ -113,12 +113,20 @@ export interface TicketDetailResponse extends Ticket {
   removedAttachments?: Attachment[];
 }
 
+export interface CommentAuthor {
+  id: number;
+  fullName: string;
+  role: string;
+  email?: string;
+}
+
 export interface CommentItem {
   id: number;
   ticketId?: number;
   authorId?: number;
-  authorName: string;
-  authorRole: string;
+  authorName?: string;
+  authorRole?: string;
+  author?: CommentAuthor;
   content: string;
   createdAt: string;
 }
@@ -354,10 +362,18 @@ export async function postComment(ticketId: number, content: string): Promise<Co
   return data.comment;
 }
 
+export async function addComment(
+  ticketId: number,
+  content: string
+): Promise<{ comment: CommentItem }> {
+  const comment = await postComment(ticketId, content);
+  return { comment };
+}
+
 export async function indicateProblemResolved(
   ticketId: number,
   comment?: string
-): Promise<{ ticket: any; message: string }> {
+): Promise<{ ticket?: any; message: string; resolvedByRequester?: boolean }> {
   const res = await fetch(`${API_URL}/api/tickets/${ticketId}/resolve-indication`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
+    "reset:auth": "tsx prisma/reset-auth-state.ts",
     "test": "vitest run"
   },
   "prisma": {
