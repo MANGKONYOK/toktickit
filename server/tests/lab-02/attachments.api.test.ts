@@ -4,6 +4,7 @@ import app from "../../src/app.js";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
+import { signBearerToken } from "../../src/middleware/auth.js";
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,8 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
   let categoryHardware: any;
   let systemLaptop: any;
   let testTicket: any;
+  let sorawitToken: string;
+  let janeToken: string;
 
   beforeEach(async () => {
     requesterSorawit = await prisma.requesterUser.findFirst({
@@ -27,6 +30,9 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
     systemLaptop = await prisma.relatedSystem.findFirst({
       where: { name: "Corporate Laptop" },
     });
+
+    sorawitToken = signBearerToken({ userId: requesterSorawit.id, role: "REQUESTER" });
+    janeToken = signBearerToken({ userId: requesterJane.id, role: "REQUESTER" });
 
     // Create a fresh test ticket for Sorawit
     testTicket = await prisma.ticket.upsert({
@@ -73,7 +79,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .post(`/api/tickets/${testTicket.id}/attachments`)
-        .field("requesterId", requesterSorawit.id)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .attach("file", buffer, { filename: "diagnostic_report.pdf", contentType: "application/pdf" });
 
       expect(res.status).toBe(201);
@@ -88,7 +94,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .post(`/api/tickets/${testTicket.id}/attachments`)
-        .field("requesterId", requesterSorawit.id)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .attach("file", buffer, { filename: "malware.exe", contentType: "application/x-msdownload" });
 
       expect(res.status).toBe(415);
@@ -100,7 +106,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .post(`/api/tickets/${testTicket.id}/attachments`)
-        .field("requesterId", requesterSorawit.id)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .attach("file", buffer, { filename: "trojan.exe", contentType: "image/png" });
 
       expect(res.status).toBe(415);
@@ -113,7 +119,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .post(`/api/tickets/${testTicket.id}/attachments`)
-        .field("requesterId", requesterSorawit.id)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .attach("file", bigBuffer, { filename: "too_large.png", contentType: "image/png" });
 
       expect(res.status).toBe(413);
@@ -140,7 +146,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
       const buffer = Buffer.from("dummy png content");
       const res = await request(app)
         .post(`/api/tickets/${testTicket.id}/attachments`)
-        .field("requesterId", requesterSorawit.id)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .attach("file", buffer, { filename: "active_6.png", contentType: "image/png" });
 
       expect(res.status).toBe(409);
@@ -152,10 +158,21 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .post(`/api/tickets/${testTicket.id}/attachments`)
-        .field("requesterId", requesterJane.id) // Jane tries uploading to Sorawit's ticket
+        .set("Authorization", `Bearer ${janeToken}`) // Jane tries uploading to Sorawit's ticket
         .attach("file", buffer, { filename: "test.png", contentType: "image/png" });
 
       expect(res.status).toBe(404);
+    });
+
+    it("rejects unauthenticated upload with 401 Unauthorized", async () => {
+      const buffer = Buffer.from("%PDF-1.4 dummy pdf content for testing");
+
+      const res = await request(app)
+        .post(`/api/tickets/${testTicket.id}/attachments`)
+        .attach("file", buffer, { filename: "diagnostic_report.pdf", contentType: "application/pdf" });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
     });
   });
 
@@ -191,7 +208,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .get(`/api/tickets/${testTicket.id}/attachments`)
-        .query({ requesterId: requesterSorawit.id });
+        .set("Authorization", `Bearer ${sorawitToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.activeAttachments).toHaveLength(1);
@@ -199,6 +216,21 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
       expect(res.body.removedAttachments).toHaveLength(1);
       expect(res.body.removedAttachments[0].fileName).toBe("removed.pdf");
       expect(res.body.removedAttachments[0].removalReason).toBe("Superceded by newer version");
+    });
+
+    it("rejects unauthenticated attachment retrieval with 401 Unauthorized", async () => {
+      const res = await request(app).get(`/api/tickets/${testTicket.id}/attachments`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
+    });
+
+    it("returns 404 when non-owner requests ticket attachments", async () => {
+      const res = await request(app)
+        .get(`/api/tickets/${testTicket.id}/attachments`)
+        .set("Authorization", `Bearer ${janeToken}`);
+
+      expect(res.status).toBe(404);
     });
   });
 
@@ -218,8 +250,8 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .delete(`/api/attachments/${att.id}`)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .send({
-          requesterId: requesterSorawit.id,
           reason: "File contained internal company secrets by mistake",
         });
 
@@ -249,8 +281,8 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .delete(`/api/attachments/${att.id}`)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .send({
-          requesterId: requesterSorawit.id,
           reason: "nope", // 4 chars
         });
 
@@ -276,15 +308,15 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .delete(`/api/attachments/${att.id}`)
+        .set("Authorization", `Bearer ${sorawitToken}`)
         .send({
-          requesterId: requesterSorawit.id,
           reason: "Trying to remove again",
         });
 
       expect(res.status).toBe(409);
     });
 
-    it("anti-spoofing: header x-requester-id takes absolute precedence over body requesterId to prevent unauthorized removal", async () => {
+    it("anti-spoofing: session identity takes absolute precedence over body requesterId to prevent unauthorized removal", async () => {
       const att = await prisma.attachment.create({
         data: {
           ticketId: testTicket.id,
@@ -297,22 +329,30 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
         },
       });
 
-      // Attacker Jane Doe attempts to delete Sorawit's attachment by forging { requesterId: Sorawit } in body
+      // Attacker Jane Doe attempts to delete Sorawit's attachment with Jane's session
       const res = await request(app)
         .delete(`/api/attachments/${att.id}`)
-        .set("x-requester-id", String(requesterJane.id))
+        .set("Authorization", `Bearer ${janeToken}`)
         .send({
           requesterId: requesterSorawit.id,
           reason: "Malicious attacker deletion attempt",
         });
 
-      // Header identity (Jane) must govern the query predicate: attachment not found for Jane -> 404
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
 
       // Verify attachment was NOT soft-removed
       const checkDb = await prisma.attachment.findUnique({ where: { id: att.id } });
       expect(checkDb?.removedAt).toBeNull();
+    });
+
+    it("rejects unauthenticated removal with 401 Unauthorized", async () => {
+      const res = await request(app)
+        .delete(`/api/attachments/999`)
+        .send({ reason: "Unauthorized attempt" });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
     });
   });
 
@@ -338,7 +378,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .get(`/api/attachments/${att.id}/download`)
-        .query({ requesterId: requesterSorawit.id });
+        .set("Authorization", `Bearer ${sorawitToken}`);
 
       expect(res.status).toBe(200);
       expect(res.headers["content-disposition"]).toContain("user_photo.png");
@@ -364,7 +404,7 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .get(`/api/attachments/${att.id}/download`)
-        .query({ requesterId: requesterSorawit.id });
+        .set("Authorization", `Bearer ${sorawitToken}`);
 
       expect([404, 410]).toContain(res.status);
     });
@@ -384,9 +424,16 @@ describe("Attachment Lifecycle API - [API-11..15 / AC-14..18, BR-08..12]", () =>
 
       const res = await request(app)
         .get(`/api/attachments/${att.id}/download`)
-        .query({ requesterId: requesterJane.id }); // Jane tries downloading Sorawit's file
+        .set("Authorization", `Bearer ${janeToken}`); // Jane tries downloading Sorawit's file
 
       expect(res.status).toBe(404);
+    });
+
+    it("rejects unauthenticated download with 401 Unauthorized", async () => {
+      const res = await request(app).get("/api/attachments/999/download");
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("UNAUTHORIZED");
     });
   });
 });

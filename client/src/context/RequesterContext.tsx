@@ -57,9 +57,16 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
       } else {
         setIsVerified(safeData.length > 0);
       }
-    } catch (err) {
+    } catch (err: any) {
       setRequesters([]);
-      setError(err instanceof Error ? err.message : "Failed to load development requesters");
+      // HTTP 401 is expected when unauthenticated in Lab 3 — do not treat as fatal error
+      const isUnauthenticated =
+        err?.message?.includes("401") || err?.status === 401 || err?.statusCode === 401;
+      if (isUnauthenticated) {
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load development requesters");
+      }
       setIsVerified(false);
     } finally {
       setIsLoading(false);
@@ -90,13 +97,12 @@ export function RequesterProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Lock the gate open until a verified active requester is confirmed from server
+  // Lock the gate open when explicit or when valid development requesters are loaded but unselected,
+  // or on unexpected network error (ignoring unauthenticated HTTP 401).
   const isGateLockedOpen =
     isSelectorOpen ||
-    !currentRequester ||
-    !isVerified ||
     Boolean(error) ||
-    requesters.length === 0;
+    (requesters.length > 0 && (!currentRequester || !isVerified));
 
   return (
     <RequesterContext.Provider

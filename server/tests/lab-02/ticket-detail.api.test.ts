@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
 import { PrismaClient } from "@prisma/client";
+import { signBearerToken } from "../../src/middleware/auth.js";
 
 const prisma = new PrismaClient();
 
@@ -11,6 +12,8 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
   let categoryHardware: any;
   let systemLaptop: any;
   let testTicket: any;
+  let sorawitToken: string;
+  let janeToken: string;
 
   beforeEach(async () => {
     requesterSorawit = await prisma.requesterUser.findFirst({
@@ -25,6 +28,9 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
     systemLaptop = await prisma.relatedSystem.findFirst({
       where: { name: "Corporate Laptop" },
     });
+
+    sorawitToken = signBearerToken({ userId: requesterSorawit.id, role: "REQUESTER" });
+    janeToken = signBearerToken({ userId: requesterJane.id, role: "REQUESTER" });
 
     // Create a known ticket for Sorawit
     testTicket = await prisma.ticket.upsert({
@@ -56,7 +62,7 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
   it("returns 200 OK with full ticket details, requester, category, and system for owner", async () => {
     const res = await request(app)
       .get(`/api/tickets/${testTicket.id}`)
-      .query({ requesterId: requesterSorawit.id });
+      .set("Authorization", `Bearer ${sorawitToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.ticketNumber).toBe("TKT-2026-990001");
@@ -75,19 +81,20 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
     expect(Array.isArray(res.body.attachments)).toBe(true);
   });
 
-  it("supports requesterId duality via x-requester-id header", async () => {
+  it("authenticates via session and ignores legacy x-requester-id header (AC-08, BR-06)", async () => {
     const res = await request(app)
       .get(`/api/tickets/${testTicket.id}`)
-      .set("x-requester-id", String(requesterSorawit.id));
+      .set("Authorization", `Bearer ${sorawitToken}`)
+      .set("x-requester-id", String(requesterJane.id));
 
     expect(res.status).toBe(200);
     expect(res.body.ticketNumber).toBe("TKT-2026-990001");
   });
 
-  it("rejects request without requesterId with 400 Bad Request", async () => {
+  it("rejects unauthenticated request without session with 401 Unauthorized", async () => {
     const res = await request(app).get(`/api/tickets/${testTicket.id}`);
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
     expect(res.body.error).toBeDefined();
   });
 
@@ -95,17 +102,17 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
     // Jane Doe attempts to access Sorawit's ticket
     const res = await request(app)
       .get(`/api/tickets/${testTicket.id}`)
-      .query({ requesterId: requesterJane.id });
+      .set("Authorization", `Bearer ${janeToken}`);
 
     expect(res.status).toBe(404);
     expect(res.body.ticketNumber).toBeUndefined();
   });
 
-  it("anti-spoofing (AC-03): header x-requester-id takes absolute precedence over query requesterId", async () => {
+  it("anti-spoofing (AC-03): session identity takes absolute precedence over query requesterId", async () => {
     // Attacker authenticated as Jane Doe attempts to spoof Sorawit via query parameter
     const res = await request(app)
       .get(`/api/tickets/${testTicket.id}`)
-      .set("x-requester-id", String(requesterJane.id))
+      .set("Authorization", `Bearer ${janeToken}`)
       .query({ requesterId: requesterSorawit.id });
 
     // Must be rejected as 404 because Jane does not own the ticket, despite ?requesterId=Sorawit
@@ -116,7 +123,7 @@ describe("Ticket Detail API (GET /api/tickets/:id) - [API-09 / AC-13, FR-10]", (
   it("returns 404 when ticket ID does not exist", async () => {
     const res = await request(app)
       .get("/api/tickets/9999999")
-      .query({ requesterId: requesterSorawit.id });
+      .set("Authorization", `Bearer ${sorawitToken}`);
 
     expect(res.status).toBe(404);
   });

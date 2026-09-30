@@ -72,6 +72,7 @@ toktickit/
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
+
 - **Node.js**: v18.x or higher
 - **npm**: v9.x or higher
 - **Docker**: For running PostgreSQL
@@ -105,10 +106,13 @@ cp server/.env.example server/.env
 ```
 
 - **Client environment** (`client/.env`):
+
   ```env
   VITE_API_URL="http://localhost:3000"
   ```
+
 - **Server environment** (`server/.env`):
+
   ```env
   DATABASE_URL="postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public"
   PORT=3000
@@ -180,7 +184,8 @@ cd client && npm test
 npx playwright test
 ```
 
-### Test Suite Overview:
+### Test Suite Overview
+
 - **Server Tests (`server/tests/lab-02/`):** Sequential ticket numbering (`UNIT-01`), input sanitization (`UNIT-02`), ticket creation (`API-01..03`), requester selection (`API-04`), reference data (`API-05`), search & filtering (`API-06`), pagination (`API-07`), ownership isolation (`API-08, API-10`), detail retrieval (`API-09`), attachment upload & validation (`API-11..13`), soft-removal audit (`API-14`), download blocking (`API-15`), and identity anti-spoofing (`API-16, API-17`).
 - **Client Tests (`client/tests/lab-02/`):** RequesterSelector modal (`UI-01`), CreateTicket validation and field preservation (`UI-02..04`), MyTickets filter toolbar and dual empty states (`UI-05`), TicketDetail read-only shading (`UI-06`), AttachmentSection removal prompt (`UI-07`), Zen Green design token assertion (`STYLE-01`), and multi-viewport responsiveness (`RESP-01`).
 - **E2E Tests (`e2e/lab-02/`):** 8 chained user journeys running across Desktop (1280x800), Tablet (768x1024), and Mobile (375x667).

@@ -11,7 +11,7 @@ export type SortField = (typeof ALLOWED_SORT_FIELDS)[number];
 export type SortOrder = "asc" | "desc";
 
 export interface ParsedTicketQueryParams {
-  requesterId: number;
+  requesterId?: number;
   search?: string;
   categoryId?: number;
   requestedPriority?: string;
@@ -34,19 +34,21 @@ const VALID_STATUSES = new Set(["NEW", "IN_PROGRESS", "RESOLVED", "CLOSED", "CAN
 
 export function parseTicketQueryParams(
   query: Record<string, any>,
-  headers: Record<string, any> = {}
+  requesterIdInput?: number
 ): QueryParseResult {
   const errors: Record<string, string> = {};
 
-  // Resolve requesterId: header identity takes absolute precedence to prevent query-param tenant spoofing (AC-03)
-  const rawRequesterId = headers["x-requester-id"] ?? query.requesterId;
-  if (rawRequesterId === undefined || rawRequesterId === null || rawRequesterId === "") {
-    errors.requesterId = "requesterId is required";
-  }
+  // Resolve requesterId: direct number argument or query parameter
+  let requesterId: number | undefined;
+  const rawRequesterId = typeof requesterIdInput === "number" ? requesterIdInput : query.requesterId;
 
-  const requesterId = Number(rawRequesterId);
-  if (rawRequesterId !== undefined && rawRequesterId !== "" && (!Number.isInteger(requesterId) || requesterId <= 0)) {
-    errors.requesterId = "requesterId must be a positive integer";
+  if (rawRequesterId !== undefined && rawRequesterId !== null && rawRequesterId !== "") {
+    const parsed = Number(rawRequesterId);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      errors.requesterId = "requesterId must be a positive integer";
+    } else {
+      requesterId = parsed;
+    }
   }
 
   // Category ID filter

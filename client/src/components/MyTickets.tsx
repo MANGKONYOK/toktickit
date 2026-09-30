@@ -8,6 +8,7 @@ import {
   type TicketStatus,
 } from "../api.js";
 import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 
 interface MyTicketsProps {
   onNavigateToCreateTicket?: () => void;
@@ -19,6 +20,7 @@ export default function MyTickets({
   onSelectTicket,
 }: MyTicketsProps) {
   const { currentRequester } = useRequester();
+  const { user } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -49,7 +51,7 @@ export default function MyTickets({
       .catch((err) => console.error("Failed to load categories for filter:", err));
   }, []);
 
-  const currentRequesterId = currentRequester?.id;
+  const currentRequesterId = user ? user.id : currentRequester?.id;
 
   // Fetch tickets whenever context or query controls change
   const loadTickets = useCallback(async () => {
@@ -421,7 +423,12 @@ export default function MyTickets({
                   </thead>
                   <tbody>
                     {tickets.map((ticket) => (
-                      <tr key={ticket.id} data-testid={`ticket-row-${ticket.ticketNumber}`}>
+                      <tr
+                        key={ticket.id}
+                        data-testid={`ticket-row-${ticket.ticketNumber}`}
+                        style={{ cursor: onSelectTicket ? "pointer" : "default" }}
+                        onClick={() => onSelectTicket?.(ticket.id)}
+                      >
                         <td>
                           <span className="fw-bold font-monospace" style={{ color: "var(--color-primary)" }}>
                             {ticket.ticketNumber}
@@ -459,6 +466,8 @@ export default function MyTickets({
                   <div
                     key={ticket.id}
                     className="zen-ticket-card"
+                    style={{ cursor: onSelectTicket ? "pointer" : "default" }}
+                    onClick={() => onSelectTicket?.(ticket.id)}
                     data-testid={`ticket-card-${ticket.ticketNumber}`}
                   >
                     <div className="d-flex justify-content-between align-items-center mb-2">

@@ -10,6 +10,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMIN
+}
+
 enum Priority {
   LOW
   MEDIUM
@@ -19,10 +25,36 @@ enum Priority {
 
 enum TicketStatus {
   NEW
+  OPEN
   IN_PROGRESS
+  WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
   CANCELLED
+}
+
+model User {
+  id                 Int            @id @default(autoincrement())
+  fullName           String
+  email              String         @unique
+  passwordHash       String
+  role               Role           @default(REQUESTER)
+  isActive           Boolean        @default(true)
+  mustChangePassword Boolean        @default(true)
+  department         String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  createdTickets      Ticket[]       @relation("RequesterTickets")
+  assignedTickets     Ticket[]       @relation("AssignedStaffTickets")
+  uploadedAttachments Attachment[]  @relation("AttachmentUploader")
+  removedAttachments  Attachment[]  @relation("AttachmentRemover")
+  comments            Comment[]
+  internalNotes       InternalNote[]
+
+  @@index([role, isActive])
+  @@index([email])
 }
 
 model RequesterUser {
@@ -32,8 +64,6 @@ model RequesterUser {
   department String
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
-
-  tickets Ticket[]
 }
 
 model Category {
@@ -61,28 +91,35 @@ model TicketSequence {
 }
 
 model Ticket {
-  id                Int          @id @default(autoincrement())
-  ticketNumber      String       @unique
-  requesterId       Int
-  categoryId        Int
-  relatedSystemId   Int
-  requestedPriority Priority     @default(MEDIUM)
-  itPriority        Priority     @default(MEDIUM)
-  currentStatus     TicketStatus @default(NEW)
-  summary           String
-  description       String
-  ticketOwner       String       @default("Unassigned")
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                  Int          @id @default(autoincrement())
+  ticketNumber        String       @unique
+  requesterId         Int
+  categoryId          Int
+  relatedSystemId     Int
+  requestedPriority   Priority     @default(MEDIUM)
+  itPriority          Priority     @default(MEDIUM)
+  currentStatus       TicketStatus @default(NEW)
+  summary             String
+  description         String
+  ticketOwner         String       @default("Unassigned")
+  ticketOwnerId       Int?
+  resolvedByRequester Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  requester     RequesterUser @relation(fields: [requesterId], references: [id])
+  requester     User          @relation("RequesterTickets", fields: [requesterId], references: [id])
+  assignedStaff User?         @relation("AssignedStaffTickets", fields: [ticketOwnerId], references: [id])
   category      Category      @relation(fields: [categoryId], references: [id])
   relatedSystem RelatedSystem @relation(fields: [relatedSystemId], references: [id])
   attachments   Attachment[]
+  comments      Comment[]
+  internalNotes InternalNote[]
 
   @@index([requesterId])
   @@index([createdAt(sort: Desc)])
   @@index([categoryId])
+  @@index([currentStatus, itPriority])
+  @@index([ticketOwnerId])
 }
 
 model Attachment {
@@ -100,5 +137,34 @@ model Attachment {
   removedById    Int?
   removalReason  String?
 
+  uploadedBy     User      @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  removedBy      User?     @relation("AttachmentRemover", fields: [removedById], references: [id])
+
   @@index([ticketId])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt(sort: Asc)])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt(sort: Asc)])
 }

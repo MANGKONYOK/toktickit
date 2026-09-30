@@ -238,6 +238,25 @@ body {
   font-weight: 700;
 }
 
+/* User Role Badges */
+.zen-badge-role-requester {
+  background-color: var(--color-pale-green);
+  color: var(--color-primary);
+  border: 1px solid #9fd3b6;
+}
+
+.zen-badge-role-staff {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.zen-badge-role-admin {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+
 /* Mobile Ticket Cards */
 .zen-ticket-card {
   background-color: #ffffff;

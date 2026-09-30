@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   fetchCategories,
   fetchRelatedSystems,
@@ -24,6 +25,7 @@ interface FormErrors {
 
 export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProps) {
   const { currentRequester } = useRequester();
+  const { user } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
@@ -120,7 +122,8 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
       return;
     }
 
-    if (!currentRequester) {
+    const activeRequester = user ? { id: user.id } : currentRequester;
+    if (!activeRequester) {
       setServerError("Please select a development requester before creating a ticket.");
       return;
     }
@@ -129,7 +132,7 @@ export default function CreateTicket({ onNavigateToMyTickets }: CreateTicketProp
 
     try {
       const ticket = await createTicket({
-        requesterId: currentRequester.id,
+        requesterId: activeRequester.id,
         categoryId: Number(categoryId),
         relatedSystemId: Number(relatedSystemId),
         requestedPriority,
