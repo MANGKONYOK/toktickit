@@ -11,15 +11,13 @@
 
 | PR | Feature Branch | Target Branch | Scope / Feature Area | Reviewer Verdict |
 | :---: | :--- | :--- | :--- | :--- |
-| #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Changes Addressed & Ready** |
-| #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Changes Addressed & Ready** |
-| #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Changes Addressed & Ready** |
-| #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Changes Addressed & Merged** |
-| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Changes Addressed & Merged** |
-| #6 | `lab3-feature/6-admin-user-mgmt` | `lab3-staging` | Administrator User Management, Safety Guardrails (Self-Deactivation & Last Admin Protection), Password Reset, and UI-07 User Administration Screen | **Changes Addressed & Approved** |
-| #7 | `lab3-feature/7-e2e-and-release-prep` | `lab3-staging` | Playwright Multi-Viewport E2E Suites, Visual Evidence Capture, DoD Completion, and Release Finalization | **Changes Addressed & Ready** |
-
-*(All 7 Sprint 3 feature branches have been implemented and prepared for staged release).*
+| #1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Engineering Contract, RBAC Matrix, & Test Architecture | **Approved** |
+| #2 | `lab3-feature/2-auth-foundation` | `lab3-staging` | Authentication Foundation, User Migration, Bcrypt Hashing, Session Management, and RBAC Middleware | **Approved** |
+| #3 | `lab3-feature/3-requester-continuity` | `lab3-staging` | Requester Ticket Continuity, Session-Bound Ticket Operations, Ownership Boundary Isolation, Public Comments Stream, and Problem Resolved Indication | **Approved** |
+| #4 | `lab3-feature/4-staff-ticket-queue` | `lab3-staging` | IT Staff Ticket Queue, Substring Search, Multi-Criteria Filtering, Ownership Filtering, Deterministic Sorting & Pagination | **Approved** |
+| #5 | `lab3-feature/5-staff-ticket-detail` | `lab3-staging` | Staff Ticket Detail, Ownership Claim & Reassignment, IT Priority Override, 8 Governed Status Transitions, and Confidential Internal Notes | **Approved** |
+| #6 | `lab3-feature/6-admin-user-mgmt` | `lab3-staging` | Administrator User Management, Safety Guardrails (Self-Deactivation & Last Admin Protection), Password Reset, and UI-07 User Administration Screen | **Approved** |
+| #7 | `lab3-feature/7-e2e-and-release-prep` | `lab3-staging` | Playwright Multi-Viewport E2E Suites, Visual Evidence Capture, DoD Completion, and Release Finalization | **Approved** |
 
 ---
 
@@ -41,7 +39,7 @@
   - Body says zero code altered, but all rows in tests.md read Final: Pass and specification.md:364 ticks every DoD box. Pass -> Planned, [x] -> [ ].
 
   Issue:
-  - Six test tiers where §10 requires eight (missing security/authorization and migration/regression). Planned zero unit tests for BR-14 and BR-02.
+  - Six test tiers where Section 10 requires eight (missing security/authorization and migration/regression). Planned zero unit tests for BR-14 and BR-02.
   - AC-02 and AC-03 contradict: 403 ACCOUNT_INACTIVE acts as an enumeration oracle if checked before password.
 
   Worth fixing:
@@ -56,9 +54,9 @@
   ```text
   Resolved all blocking and issue items systematically:
   1. Status alignment: Changed all test final statuses in tests.md to "Planned" and reset all Definition of Done checkboxes in specification.md to unchecked ([ ]), strictly preserving Part 2 Spec DD evidence.
-  2. 8 Test tiers: Expanded test architecture in tests.md §1 to full 8 tiers (adding Security/Authorization and Migration/Regression). Planned pure unit tests UNIT-01 (password complexity) and UNIT-02 (8-state transition graph) and migration test MIG-01.
+  2. 8 Test tiers: Expanded test architecture in tests.md Section 1 to full 8 tiers (adding Security/Authorization and Migration/Regression). Planned pure unit tests UNIT-01 (password complexity) and UNIT-02 (8-state transition graph) and migration test MIG-01.
   3. Enumeration oracle: Updated BR-04 to mandate that email and bcrypt password matching executes prior to inspecting account active status. Invalid credentials always return 401, completely closing the enumeration oracle.
-  4. Schema & migration polish: Added Attachment model in specification.md §8.1 with uploadedById and removedById retargeting to User, clarified itPriority copying on creation (BR-13), documented Lab 2 Requester migration strategy in §8.2, and characterized migration as schema evolution in §11.2.
+  4. Schema & migration polish: Added Attachment model in specification.md Section 8.1 with uploadedById and removedById retargeting to User, clarified itPriority copying on creation (BR-13), documented Lab 2 Requester migration strategy in Section 8.2, and characterized migration as schema evolution in Section 11.2.
   ```
 
 #### PR #2 (`lab3-feature/2-auth-foundation`)
@@ -108,9 +106,9 @@
      - Removed destructive `prisma.requesterUser.deleteMany()`.
   4. Cookie Flags & Account Count (Issue 7):
      - Added `secure: process.env.NODE_ENV === "production"` to `POST /api/auth/login` session cookie options.
-     - Synchronized `specification.md` §8.3 to accurately document all 13 provisioned accounts (10 active, 3 inactive) including Lab 2 compatibility accounts.
+     - Synchronized `specification.md` Section 8.3 to accurately document all 13 provisioned accounts (10 active, 3 inactive) including Lab 2 compatibility accounts.
   5. Schema Documentation Synchronization (Issue 8):
-     - Updated `Attachment` model definition in `docs/lab-03/specification.md` §8.1 to match `schema.prisma` exactly (`fileName`, `fileSize`, `filePath`, `uploadedAt`, `removedAt`, `removalReason`).
+     - Updated `Attachment` model definition in `docs/lab-03/specification.md` Section 8.1 to match `schema.prisma` exactly (`fileName`, `fileSize`, `filePath`, `uploadedAt`, `removedAt`, `removalReason`).
   ```
 
 #### PR #3 (`lab3-feature/3-requester-continuity`)
@@ -231,7 +229,7 @@
   3. Multi-criteria filtering by `categoryId` / `categoryName`, `priority` (operational `itPriority`), and `status` across all 8 governed lifecycle statuses.
   4. Assignment filtering: `assigned=unassigned` (`ticketOwnerId is null`), `assigned=me` (`ticketOwnerId == req.user.id`), and `assigned=all`.
   5. Deterministic sorting (`createdAt`, `ticketNumber`, `summary`, `itPriority`, `status`, `updatedAt`) with secondary tie-breaker `id: "desc"` (BR-11).
-  6. Server-side pagination with structured envelope matching `api-spec.md` §5.1.
+  6. Server-side pagination with structured envelope matching `api-spec.md` Section 5.1.
   7. Responsive Zen Green `StaffTicketQueue.tsx` component with search/filter toolbar, sortable table, tablet scroll, mobile stacked cards, and pagination.
   8. Automated test suites:
      - `server/tests/lab-03/staff-queue.api.test.ts` (16 tests, covering API-15, API-16, API-17, AC-12, AC-13, AC-14).
@@ -259,8 +257,8 @@
   Resolved both items in Warning #4 cleanly:
   1. Aligned 500 Error Code with BR-22:
      - In `server/src/app.ts` (GET /api/staff/tickets catch block), changed error code from `INTERNAL_ERROR` to `INTERNAL_SERVER_ERROR`, strictly matching the BR-22 envelope specification.
-  2. Synchronized Pagination Bounds Contract (BR-25 & API-Spec §5.1):
-     - In `specification.md` (BR-25) and `api-spec.md` (§5.1), clarified the pagination contract: the frontend UI (`StaffTicketQueue.tsx`) presents discrete presets in `[10, 20, 50]` (default 10), while the backend API (`staff-ticket-query.ts`) safely bounds `pageSize` between 1 and 50. This avoids artificial test rigidity (enabling granular integration test slices like `pageSize=2`) while strictly upholding memory safety with a hard upper bound of 50.
+  2. Synchronized Pagination Bounds Contract (BR-25 & API-Spec Section 5.1):
+     - In `specification.md` (BR-25) and `api-spec.md` (Section 5.1), clarified the pagination contract: the frontend UI (`StaffTicketQueue.tsx`) presents discrete presets in `[10, 20, 50]` (default 10), while the backend API (`staff-ticket-query.ts`) safely bounds `pageSize` between 1 and 50. This avoids artificial test rigidity (enabling granular integration test slices like `pageSize=2`) while strictly upholding memory safety with a hard upper bound of 50.
   3. Verification:
      - All 128 server tests passing across 17 test files (0 failures).
      - All 59 client tests passing across 13 test files (0 failures).
@@ -488,24 +486,158 @@
 
 | PR / Feature | Branch | Target Branch | Review Scope | Reviewer Verdict |
 | :--- | :--- | :--- | :--- | :--- |
-| Feature 1 | `lab3-feature/1-spec-andtest-plan` | `lab3-staging` | Sprint 3 Specification, RBAC Matrix & Test Plan | **Pending Partner PR** |
-
-*(Reviews for partner's subsequent PRs will be logged incrementally as they are submitted).*
+| Feature 1 | `lab3-feature/1-sprint-contract` | `lab3-staging` | Sprint 3 Specification, RBAC Matrix, API Schema & Test Plan | **Changes Addressed & Approved** |
+| Feature 2 | `lab3-feature/2-auth-migration` | `lab3-staging` | User Migration, Authentication, Session Management, & Preflight/CORS | **Changes Addressed & Approved** |
+| Feature 3 | `lab3-feature/3-rbac-shell` | `lab3-staging` | Role Authorization, Shell Navigation, Landing Routing, & Neumorphic Design System | **Changes Addressed & Approved** |
+| Feature 4 | `lab3-feature/4-staff-workflow` | `lab3-staging` | IT Staff Queue, Ticket Detail, Status Transitions, Internal Notes, & Attachments RBAC | **Changes Addressed & Approved** |
 
 ---
 
 ### Reviews Given to Partner (@kmood-Sakura)
 
-#### Feature 1: Sprint 3 Engineering Contract (`lab3-feature/1-spec-andtest-plan`)
+#### Feature 1: Sprint 3 Engineering Contract (`lab3-feature/1-sprint-contract`)
 
 - **Review comments provided to partner:**
 
   ```text
-  [To be populated upon review of partner's PR #1]
+  Read through your contract draft in docs/lab-03/. The RBAC matrix and Neumorphic surface definitions look solid and give us a clear blueprint. Spotted three inconsistencies to align before coding:
+
+  1. Version mismatch: README.md lists version 3.1.0 while package.json is still on 2.4.0. Since grading scripts check package.json, let's keep both on the same release version.
+  2. Requirements traceability:
+     - specification.md Section 9 does not map the 57 FRs to the 70 ACs, and FR-33 (queue sorting) lacks an AC citation.
+     - api-spec.md lists 28 endpoints, while the test plan text mentions 23.
+  3. Missing endpoints and documentation:
+     - The UI spec defines an active IT Staff reassignment dropdown, but there is no endpoint for IT Staff to fetch active staff members (user management is restricted to ADMIN). We need a dedicated GET /api/staff/users endpoint.
+     - Initial seed passwords for the 10 provisioned accounts are missing from README.md and specification.md Section 2.4.
+     - Add explicit contract definitions for credentialed CORS (BR-60) and SameSite cookie behavior.
   ```
 
 - **Partner's response & resolution:**
 
   ```text
-  [To be recorded upon partner's resolution]
+  Addressed all review items across v3.1.1, v3.1.2, and v3.1.3:
+  1. Version alignment (v3.1.1 / v3.1.2): Synchronized release version 3.1.3 across both README.md and package.json.
+  2. Traceability matrix (v3.1.1): Added full FR-to-AC mapping in specification.md Section 9, marked FR-33 as an explicit exception in the Definition of Done, and updated the api-spec.md endpoint count to 28.
+  3. Contract gaps closed (v3.1.3):
+     - Added GET /api/staff/users to api-spec.md to return active IT Staff users for assignment selectors.
+     - Documented default seeded credentials in README.md and specification.md Section 2.4.
+     - Formalized BR-60 defining credentialed CORS semantics with explicit origin reflection, and clarified SameSite cookie behavior.
+  ```
+
+---
+
+#### Feature 2: Authentication & Database Migration (`lab3-feature/2-auth-migration` / `lab3-feature/2-auth-restore`)
+
+- **Review comments provided to partner:**
+
+  ```text
+  Tested the migration script and auth foundation. The hand-crafted ALTER TABLE rename works cleanly without downtime—it preserves all 188 tickets and 163 attachments from Lab 2 without breaking foreign keys. A few issues and a test gap to fix:
+
+  1. Fresh-clone test failure (MIG-01): MIG-01 expects at least 188 tickets and 163 attachments from Lab 2 history, but seed.ts provisions zero tickets on a fresh database. Running MIG-01 on a clean clone failed because there were 0 rows.
+  2. Validation error handling: In POST /api/auth/change-password, per-field checks return early before cross-field checks run. If any single field is invalid, confirmPassword mismatches are hidden until the next attempt. We should return all validation errors in one response per BR-51.
+  3. Handling 403 on password change gate: fetchMe returns null when hitting a 403 MUST_CHANGE_PASSWORD gate instead of returning the session payload. This causes the frontend to redirect back to login instead of opening the ChangePasswordModal.
+  4. Test gap for CORS & OPTIONS preflight: Missing tests for OPTIONS preflight (API-85 returning 204 with credentials headers before hitting auth middleware).
+  ```
+
+- **Partner's response & resolution:**
+
+  ```text
+  Resolved all review items across v3.2.1, v3.2.2, and v3.2.3:
+  1. Seed idempotency & clean-clone stability (v3.2.3):
+     - Updated server/prisma/seed.ts to seed 8 comprehensive tickets covering all 8 lifecycle statuses, 3 comments, 2 notes, and both assigned and unassigned states.
+     - Scoped MIG-01 to historical migrated records (predating migration), and updated MIG-09 to assert unassigned owners only on migrated tickets.
+  2. Unified validation payload (v3.2.3): Refactored change-password validation to evaluate both per-field and cross-field constraints together, returning all failing fields at once in { fields: { ... } }.
+  3. Session continuity on gate (v3.2.3): Updated fetchMe to return the session user object on 403 so the client stays logged in and opens the ChangePasswordModal.
+  4. CORS security & preflight tests (v3.2.1 / v3.2.2):
+     - Implemented dynamic CORS origin callback returning false for unapproved origins (omitting Access-Control-Allow-Origin).
+     - Added test API-85 verifying that OPTIONS preflight returns HTTP 204 with credentials headers prior to session evaluation.
+  ```
+
+---
+
+#### Feature 3: Role Authorization & Neumorphic Shell (`lab3-feature/3-rbac-shell`)
+
+- **Review comments provided to partner:**
+
+  ```text
+  Tested the role authorization middleware and client shell integration. The middleware order (session -> passwordChangeGate -> requireRole) is correct and protects route boundaries. Found two bugs and a test regression during testing:
+
+  1. Infinite redirect loop on login:
+     - Logging in as IT Staff or Admin triggers an infinite redirect loop: LandingRoute sends IT_STAFF to /staff/tickets and ADMIN to /admin/users, but neither route was declared in client/src/App.tsx yet.
+     - The catch-all route path="*" redirected right back to LandingRoute, causing a loop and leaving a blank screen.
+  2. Missing landing route integration tests: Client tests were mocking AuthContext per-component, so the redirect loop slipped through undetected. We need integration tests driving full sign-in per role.
+  3. Regression in my-tickets.api.test.ts: During the header-to-cookie migration, 10 out of 11 test cases in my-tickets.api.test.ts were accidentally deleted. Let's restore them.
+  4. Flaky mobile and parallel viewport tests: Parallel Playwright runs raced password changes on the same test user, and on mobile viewports (< 768px), navigation links were hidden behind the hamburger menu without being clicked.
+  ```
+
+- **Partner's response & resolution:**
+
+  ```text
+  Resolved all review points across v3.3.1, v3.3.2, and v3.3.3:
+  1. Catch-all and landing routes (v3.3.2):
+     - Added placeholder landing routes for /staff/tickets and /admin/users inside the authenticated shell.
+     - Changed the catch-all route path="*" to render a NotFound component behind RequireAuth rather than redirecting, eliminating loops.
+     - Rendered role refusal screens inside the authenticated shell so users can still navigate and log out.
+  2. App landing integration tests (v3.3.2): Added client/tests/lab-03/App.landing.test.tsx mounting the full <App /> and asserting proper landing behavior for all three roles (UI-40, UI-40b, UI-40c, UI-40d).
+  3. Restored regression suite (v3.3.1): Fully restored all 10 missing test cases in my-tickets.api.test.ts using session identity.
+  4. Playwright resilience (v3.3.3):
+     - Assigned distinct test users per viewport to avoid concurrent password change conflicts.
+     - Added responsive hamburger menu clicks for mobile viewports (< 768px).
+     - Isolated screenshots to git-ignored scratch directories to preserve submitted Lab 2 evidence.
+  ```
+
+---
+
+#### Feature 4: IT Staff Ticket Workflow & Discussion Threads (`lab3-feature/4-staff-workflow`)
+
+- **Review comments provided to partner (Round 1):**
+
+  ```text
+  Checked out the staff queue, status transition engine, and discussion threads. The 17-edge status transition state machine works as expected, and the queue search and filters are clean. Two items to polish:
+
+  1. Negative authorization tests: The queue and ticket actions were mostly tested on happy paths. We need tests verifying that unauthorized roles (like Requesters or Admins calling staff endpoints) get rejected with 403 Forbidden.
+  2. Upload stream draining & ticket number concurrency: When file uploads exceed 5MB (413 Payload Too Large), the server should drain the incoming socket stream to prevent connection resets. Also, ticket numbering should be atomic to avoid duplicate numbers under concurrent requests.
+  ```
+
+- **Partner's response & resolution (Round 1 at `40500f9` / v3.4.2):**
+
+  ```text
+  Addressed Round 1 items in v3.4.1 and v3.4.2:
+  1. Added authorization refusal tests in authorization.api.test.ts verifying that Requesters and Admins are rejected with 403 on staff routes.
+  2. Implemented socket stream draining for oversized file uploads in upload middleware, and ensured atomic ticket numbering via PostgreSQL sequence / INSERT ... ON CONFLICT DO UPDATE.
+  ```
+
+- **Review comments provided to partner (Round 2 — Final Review):**
+
+  ```text
+  Tested the Staff Ticket Detail screen and attachment downloads. Found three functional issues to fix before we merge:
+
+  1. Attachments blocked for IT Staff:
+     - In server/src/routes/attachments.ts, attachmentsRouter is restricted to requireRole("REQUESTER"). When IT Staff tries to download an attachment, they get a 403 Forbidden.
+     - StaffTicketDetail.tsx is missing the attachments panel, so staff cannot view or download files attached to tickets (AC-29, E2E-10, ui-spec.md Section 11).
+  2. Missing "Problem Appears Resolved" banner:
+     - While the server returns resolvedByRequester and resolvedByRequesterAt, StaffTicketDetail.tsx never renders the banner (ui-spec.md Section 11, E2E-11).
+  3. Missing navigation back to queue:
+     - StaffTicketDetail.tsx is missing a direct "← Back to Queue" link at the top to let staff return to /staff/tickets easily.
+  ```
+
+- **Partner's response & resolution (Round 2 at `cb436d2` / v3.4.3):**
+
+  ```text
+  Resolved all three items in commit cb436d2 (v3.4.3):
+  1. Attachments RBAC & UI panel:
+     - Created server/src/utils/visibility.ts with ticketScope and attachmentScope SQL predicates.
+     - Updated attachmentsRouter to requireRole("REQUESTER", "IT_STAFF") and applied attachmentScope to GET /api/attachments/:id/download and DELETE /api/attachments/:id.
+     - Scoped ticketsRouter attachment routes with requesterOrStaff and ticketScope.
+     - Added AUTH-13b verifying that IT Staff can list, download, and upload attachments on tickets they did not raise.
+     - Rendered Attachments panel in StaffTicketDetail.tsx with download buttons calling authenticated downloadAttachment blob requests (tested by UI-32).
+  2. Resolved indication banner:
+     - Rendered .resolved-banner (<p role="status">) in StaffTicketDetail.tsx displaying "✓ The requester marked this resolved on [date]", preserving operational status intact (tested by UI-31).
+  3. Back to Queue link:
+     - Added <Link to="/staff/tickets">← Back to Queue</Link> in .detail-top and failure alert states (tested by UI-33).
+  4. Extra polish:
+     - Added amber edge (border-left: 4px solid var(--zen-warning)) and lock icon to Internal Notes to prevent accidental disclosure.
+  5. Verification:
+     - 173 server tests, 93 client tests, and 12 browser tests passing with zero TypeScript errors.
+     - Verdict: APPROVED — Ready to merge into lab3-staging.
   ```

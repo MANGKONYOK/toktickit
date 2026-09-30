@@ -34,7 +34,7 @@ The IT Department requires TokTickIT to transition from an isolated requester pr
 - **IT Staff Ticket Queue:** Global queue query API and responsive UI supporting keyword search, category/priority/status/assignment filters, sorting, and pagination.
 - **IT Staff Ticket Detail Operations:** Ticket ownership claiming/reassigning, IT Priority modification, 8 permitted lifecycle status transitions, and private Internal Notes panel.
 - **Minimalist Administrator User Management:** User list table, search, role filtering, user creation with initial password, user editing, password reset, and admin safety guardrails.
-- **Zen Green Design System & Responsiveness:** Conformance across Desktop ($\ge 992\text{px}$), Tablet ($768\text{px}-991\text{px}$), and Mobile ($< 768\text{px}$).
+- **Zen Green Design System & Responsiveness:** Conformance across Desktop (>= 992px), Tablet (768px - 991px), and Mobile (< 768px).
 
 ### 3.2. Explicitly Excluded Scope (Do NOT Implement)
 
@@ -91,16 +91,14 @@ The IT Department requires TokTickIT to transition from an isolated requester pr
 - **BR-12 (Ownership Assignment Validity):** Tickets may be assigned only to active users (`isActive = true`) whose role is `IT_STAFF` or `ADMIN`. Assigning to an inactive user or a `REQUESTER` is rejected with HTTP 400 Bad Request. Unassigned tickets have `ticketOwnerId = null`.
 - **BR-13 (Operational IT Priority Authority):** The operational `itPriority` is initially seeded from the requester's `priority`. Only `IT_STAFF` and `ADMIN` roles may update `itPriority`.
 - **BR-14 (Governed Status Transition Matrix):** Ticket status transitions must strictly follow the state transition graph:
-  $$\begin{aligned}
-  \text{NEW} &\longrightarrow \text{OPEN}, \text{CANCELLED} \\
-  \text{OPEN} &\longrightarrow \text{IN\_PROGRESS}, \text{WAITING\_FOR\_REQUESTER}, \text{RESOLVED}, \text{CANCELLED} \\
-  \text{IN\_PROGRESS} &\longrightarrow \text{WAITING\_FOR\_REQUESTER}, \text{RESOLVED}, \text{CANCELLED} \\
-  \text{WAITING\_FOR\_REQUESTER} &\longrightarrow \text{IN\_PROGRESS}, \text{RESOLVED}, \text{CANCELLED} \\
-  \text{RESOLVED} &\longrightarrow \text{CLOSED}, \text{REOPENED} \\
-  \text{REOPENED} &\longrightarrow \text{IN\_PROGRESS}, \text{RESOLVED}, \text{CANCELLED} \\
-  \text{CLOSED} &\longrightarrow \text{[Terminal State — No transitions]} \\
-  \text{CANCELLED} &\longrightarrow \text{[Terminal State — No transitions]}
-  \end{aligned}$$
+  - `NEW` -> `OPEN`, `CANCELLED`
+  - `OPEN` -> `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`
+  - `IN_PROGRESS` -> `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`
+  - `WAITING_FOR_REQUESTER` -> `IN_PROGRESS`, `RESOLVED`, `CANCELLED`
+  - `RESOLVED` -> `CLOSED`, `REOPENED`
+  - `REOPENED` -> `IN_PROGRESS`, `RESOLVED`, `CANCELLED`
+  - `CLOSED` -> [Terminal State — No transitions]
+  - `CANCELLED` -> [Terminal State — No transitions]
   Any transition outside this matrix must be rejected with HTTP 400 Bad Request (`INVALID_STATUS_TRANSITION`).
 
 - **BR-15 (Internal Notes Secrecy):** Internal notes are strictly internal to IT operations. Only `IT_STAFF` and `ADMIN` roles may create or read internal notes. Internal note records must never be returned in Requester API responses or UI views. Requesters attempting to access internal notes receive HTTP 403 Forbidden.
@@ -164,9 +162,9 @@ The IT Department requires TokTickIT to transition from an isolated requester pr
 
 ### 7.3. Responsive Layout Guidelines
 
-- **Desktop ($\ge 992\text{px}$):** Multi-column data tables, side-by-side grouped detail cards, full drawer forms.
-- **Tablet ($768\text{px}-991\text{px}$):** 2-column compact grid, collapsible filter toolbar, table container with touch scrolling.
-- **Mobile ($< 768\text{px}$):** Stacked cards representation, full-width touch targets ($\ge 44\text{px}$), hidden secondary columns, zero horizontal overflow.
+- **Desktop (>= 992px):** Multi-column data tables, side-by-side grouped detail cards, full drawer forms.
+- **Tablet (768px - 991px):** 2-column compact grid, collapsible filter toolbar, table container with touch scrolling.
+- **Mobile (< 768px):** Stacked cards representation, full-width touch targets (>= 44px), hidden secondary columns, zero horizontal overflow.
 
 ---
 
@@ -302,7 +300,7 @@ model InternalNote {
 
 *Note on `itPriority`:* When a ticket is created, the system dynamically initializes `itPriority` to match the requester's chosen `priority` (conforming to BR-13). The `@default(MEDIUM)` in Prisma serves solely as a database fallback.
 
-### 8.2. Lab 2 Requester Migration Strategy (§5.2)
+### 8.2. Lab 2 Requester Migration Strategy (Section 5.2)
 
 To evolve the Lab 2 database into the Lab 3 multi-role architecture without data loss:
 - **Table Evolution:** Existing `RequesterUser` records are migrated into `User` with `role = REQUESTER`.
@@ -407,16 +405,16 @@ All endpoints return standard JSON envelopes. Protected endpoints require valid 
 - [x] All 15 Functional Requirements (FR-01..15) and 25 Business Rules (BR-01..25) are satisfied.
 - [x] All 22 Acceptance Criteria (AC-01..22) are mapped to automated tests with 100% pass status.
 - [x] All existing Lab 2 Requester capabilities pass regression testing under authenticated identity.
-- [x] Password hashing uses `bcrypt` with salt rounds $\ge 10$; plaintext passwords never stored.
+- [x] Password hashing uses `bcrypt` with salt rounds >= 10; plaintext passwords never stored.
 - [x] Server catch blocks redact internal database errors and return safe HTTP 500 envelopes with UUID `correlationId`.
 - [x] Role-Based Access Control is enforced server-side via Express middleware, returning HTTP 403.
 - [x] Internal Notes are verified 100% confidential and inaccessible to Requesters.
 - [x] Administrator safety guardrails (self-deactivation and last-admin protection) are verified by automated tests.
-- [x] Zen Green design tokens and responsive layouts ($\ge 992\text{px}$, $768\text{px}-991\text{px}$, $< 768\text{px}$) are upheld with zero horizontal overflow.
+- [x] Zen Green design tokens and responsive layouts (>= 992px, 768px - 991px, < 768px) are upheld with zero horizontal overflow.
 - [x] Playwright multi-viewport automated E2E suites pass across Desktop, Tablet, and Mobile viewports.
 
 ### 11.2. Key Technical Decisions
 
 - **Session vs. JWT:** We employ signed HTTP-only cookies storing a verified session token containing `{ userId, role }`. HTTP-only cookies prevent Cross-Site Scripting (XSS) credential theft while eliminating manual header handling on the client.
-- **Prisma Schema Migration Strategy:** Rather than a purely additive migration, Sprint 3 executes a structured schema evolution: evolving `RequesterUser` $\to$ `User`, updating foreign key references in `Ticket` (`requesterId`, `ticketOwnerId`) and `Attachment` (`uploadedById`, `removedById`), normalizing `currentStatus` $\to$ `status`, and adding `itPriority` and `resolvedByRequester`. Existing reference tables (`Category`, `RelatedSystem`) remain intact with zero data loss.
+- **Prisma Schema Migration Strategy:** Rather than a purely additive migration, Sprint 3 executes a structured schema evolution: evolving `RequesterUser` -> `User`, updating foreign key references in `Ticket` (`requesterId`, `ticketOwnerId`) and `Attachment` (`uploadedById`, `removedById`), normalizing `currentStatus` -> `status`, and adding `itPriority` and `resolvedByRequester`. Existing reference tables (`Category`, `RelatedSystem`) remain intact with zero data loss.
 - **Internal Note Visual Contrast:** To eliminate human error in operational IT environments, Internal Notes are styled with an unmistakable warm amber card background (`#FFF8E1` with `#FFE082` border), prominently labeled "Confidential Internal Note — IT Staff & Admin Only".

@@ -19,7 +19,7 @@ The application strictly enforces the established Zen Green color palette and ty
 | **Warning / Amber** | `--color-warning` | `#B06000` | Urgent badges, warning notices |
 | **Internal Note Tint**| `--color-note-bg` | `#FFF8E1` | **Confidential Internal Note card background** (Warm amber) |
 | **Internal Note Border**|`--color-note-border` | `#FFE082` | **Confidential Internal Note border** (Distinct warning border) |
-| **Focus Ring** | `--color-focus-ring` | `#80BD9E` | Visible $\ge 2\text{px}$ outline for keyboard navigation accessibility |
+| **Focus Ring** | `--color-focus-ring` | `#80BD9E` | Visible >= 2px outline for keyboard navigation accessibility |
 | **Text Primary** | `--color-text-primary` | `#1B2E24` | Primary high-contrast body text and headings |
 | **Text Muted** | `--color-text-muted` | `#526058` | Descriptive labels, timestamps, placeholder text |
 
@@ -57,7 +57,7 @@ The top navigation header dynamically reflects authentication state and assigned
 
 ### 3.1. Login Screen (`/login`)
 
-- **Layout:** Centered Zen Green authentication card ($420\text{px}$ width) on `#F5F7F6` canvas.
+- **Layout:** Centered Zen Green authentication card (420px width) on `#F5F7F6` canvas.
 - **Controls:** Email input (`type="email"`), Password input (`type="password"`), "Sign In" primary button.
 - **States:**
   - *Validation Error:* Red border (`#C5221F`) and inline error text below invalid inputs.
@@ -95,12 +95,12 @@ The top navigation header dynamically reflects authentication state and assigned
   - Substring search input for Ticket Number or Summary.
   - Dropdown filters for Category, Priority, Status, and Assignment (`All Tickets`, `Unassigned`, `Assigned to Me`).
   - "Clear Filters" reset button.
-- **Desktop Table View ($\ge 992\text{px}$):** Multi-column table with headers:
+- **Desktop Table View (>= 992px):** Multi-column table with headers:
   `Ticket #`, `Date`, `Requester`, `Category`, `System`, `Priority`, `Status`, `Assigned To`, `Actions`.
   Headers for sortable columns include interactive sort indicators (`▲`/`▼`).
 
-- **Tablet View ($768\text{px}-991\text{px}$):** Compact table with secondary columns collapsed and horizontal scrolling enabled on table container.
-- **Mobile Stacked Cards View ($< 768\text{px}$):** Replaces table with stacked cards showing Ticket Number, Status pill, Priority badge, Summary, Requester name, and "View Details" button ($\ge 44\text{px}$ height).
+- **Tablet View (768px - 991px):** Compact table with secondary columns collapsed and horizontal scrolling enabled on table container.
+- **Mobile Stacked Cards View (< 768px):** Replaces table with stacked cards showing Ticket Number, Status pill, Priority badge, Summary, Requester name, and "View Details" button (>= 44px height).
 - **Empty & No-Results States:**
   - *Empty Queue:* Friendly illustration indicating zero tickets in the system.
   - *Filtered No Results:* "No tickets match your filter criteria" with a "Reset Filters" action.
@@ -147,8 +147,8 @@ The top navigation header dynamically reflects authentication state and assigned
 - [ ] **Color Tokens:** Zen Green `#006B3C` used for primary actions, `#0B7A46` for active/focus, `#EAF6EF` for light highlights, `#FFF8E1` for Internal Notes.
 - [ ] **Role Shell:** Correct navbar navigation rendered for unauthenticated, requester, staff, and admin.
 - [ ] **Read-Only Shading:** `#F0F4F1` applied to non-editable fields and background cards.
-- [ ] **Touch Targets:** All interactive controls (buttons, links, select inputs) measure $\ge 44\text{px} \times 44\text{px}$.
-- [ ] **Zero Horizontal Overflow:** Document width strictly matches viewport width ($375\text{px}$, $768\text{px}$, $1280\text{px}$).
+- [ ] **Touch Targets:** All interactive controls (buttons, links, select inputs) measure >= 44px x 44px.
+- [ ] **Zero Horizontal Overflow:** Document width strictly matches viewport width (375px, 768px, 1280px).
 - [ ] **Confidential Contrast:** Internal Notes panel visually distinct from Public Comments to prevent data leakage.
 
 ### 4.2. Planned Screenshot Artifact Paths (`artifacts/lab-03/screenshots/`)
@@ -163,9 +163,9 @@ The top navigation header dynamically reflects authentication state and assigned
 
 #### 2. Staff Queue (`artifacts/lab-03/screenshots/staff-queue/`)
 
-- `01-staff-queue-desktop.png`: Multi-column queue table on Desktop ($\ge 992\text{px}$).
-- `02-staff-queue-tablet.png`: Compact queue layout on Tablet ($768\text{px}-991\text{px}$).
-- `03-staff-queue-mobile.png`: Stacked cards queue layout on Mobile ($< 768\text{px}$).
+- `01-staff-queue-desktop.png`: Multi-column queue table on Desktop (>= 992px).
+- `02-staff-queue-tablet.png`: Compact queue layout on Tablet (768px - 991px).
+- `03-staff-queue-mobile.png`: Stacked cards queue layout on Mobile (< 768px).
 - `04-search-and-filtered-queue.png`: Queue with keyword search and category/status filters applied.
 - `05-queue-empty-and-no-results.png`: Empty queue vs. no-results filter state.
 

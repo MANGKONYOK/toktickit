@@ -11,7 +11,7 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 1. **Unit Testing:** Pure domain logic (password complexity validator, 8-state ticket status transition engine, query parser).
 2. **Supertest API Integration Testing:** Full HTTP request/response validation against Express endpoints backed by PostgreSQL.
 3. **Vitest UI Component Testing:** React Testing Library testing forms, busy states, modal dialogs, and error alerts.
-4. **UI Style & Accessibility Testing:** Verification of Zen Green design tokens, contrast ratios, and touch target bounds ($\ge 44\text{px}$).
+4. **UI Style & Accessibility Testing:** Verification of Zen Green design tokens, contrast ratios, and touch target bounds (>= 44px).
 5. **Responsive Layout Testing:** Automated assertion of layout adaptation across Desktop, Tablet, and Mobile viewports with zero horizontal scrolling.
 6. **Security & Role-Based Authorization Testing:** Verification of server-side RBAC middleware, direct API tampering rejection, and internal note secrecy.
 7. **Migration & Requester Regression Testing:** Automated verification that migrated Lab 2 Requesters receive initial passwords, require first-login change, and preserve ticket ownership.
@@ -24,8 +24,8 @@ TokTickIT enforces an 8-tier test architecture in accordance with CPE 334 Lab 3 
 | Test ID | Type | Req / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
 | **UNIT-01** | Unit | AC-05, BR-02 | Password complexity validator pure function | Rejects < 8 chars, missing uppercase, digit, or symbol; accepts valid combinations | `server/tests/lab-03/password-validator.unit.test.ts` | Pass |
-| **UNIT-02** | Unit | AC-18, BR-14 | 8-state ticket transition engine pure function | Accurately allows permitted 8 transitions and rejects forbidden transitions (e.g. `NEW` $\to$ `IN_PROGRESS`) | `server/tests/lab-03/status-transition.unit.test.ts` | Pass |
-| **MIG-01** | Migration | AC-04, §5.2 | Migrated Lab 2 Requester initial password login & mandatory change | Validates initial password, blocks app access until changed, enters app on change | `server/tests/lab-03/migration-auth.api.test.ts` | Pass |
+| **UNIT-02** | Unit | AC-18, BR-14 | 8-state ticket transition engine pure function | Accurately allows permitted 8 transitions and rejects forbidden transitions (e.g. `NEW` -> `IN_PROGRESS`) | `server/tests/lab-03/status-transition.unit.test.ts` | Pass |
+| **MIG-01** | Migration | AC-04, Section 5.2 | Migrated Lab 2 Requester initial password login & mandatory change | Validates initial password, blocks app access until changed, enters app on change | `server/tests/lab-03/migration-auth.api.test.ts` | Pass |
 | **API-01** | API | AC-01 | Valid user authentication with correct email/password | HTTP 200 OK, sets session cookie, returns safe user object | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | **API-02** | API | AC-02 | Invalid credentials submission | HTTP 401 Unauthorized (`INVALID_CREDENTIALS`), no account leak | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | **API-03** | API | AC-03 | Login attempt on inactive account (`isActive: false`) | HTTP 403 Forbidden (`ACCOUNT_INACTIVE`) when credentials match | `server/tests/lab-03/auth.api.test.ts` | Pass |
