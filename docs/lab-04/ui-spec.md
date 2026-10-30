@@ -214,5 +214,5 @@ The user interface strictly adheres to and extends the established **Zen Green**
   - Modals use `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, and trap focus until closed.
   - Custom tooltips use `data-tooltip` attribute instead of the browser `title` attribute.
 - **Form Validation & Blur Rule:**
-  - Per [AGENTS.md](file:///c:/Users/KITTIPHAT%20NOIKATE/Desktop/SoftEn_Lab/agents_md/AGENTS.md) work norms, invalid inputs during general typing clear on blur.
+  - Field-level validation errors clear on blur or correction as the user types.
   - Form-level error messages display only upon clicking `"Save Action Taken"`.
