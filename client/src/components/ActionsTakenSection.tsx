@@ -1009,3 +1009,4 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
 };
 
 export default ActionsTakenSection;
+
