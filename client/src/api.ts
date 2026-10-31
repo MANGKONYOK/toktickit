@@ -50,6 +50,7 @@ export interface Ticket {
   category?: Category;
   relatedSystem?: RelatedSystem | null;
   requester?: RequesterUser;
+  actionsTaken?: ActionTaken[];
 }
 
 export interface CreateTicketPayload {
@@ -609,6 +610,7 @@ export interface StaffTicketDetail {
   }>;
   comments: CommentItem[];
   internalNotes: InternalNoteItem[];
+  actionsTaken?: ActionTaken[];
 }
 
 export async function fetchStaffTicketDetail(
@@ -895,4 +897,103 @@ export async function resetUserPassword(
   return res.json();
 }
 
-
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionDateTime: string;
+  description: string;
+  result: string;
+  performedById: number;
+  performedBy: {
+    id: number;
+    fullName: string;
+    role: string;
+    email?: string;
+  };
+  followUpRequired: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateActionTakenPayload {
+  actionDateTime?: string;
+  description: string;
+  result: string;
+  followUpRequired: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export async function getTicketActions(
+  ticketId: number
+): Promise<{ ticketId: number; actions: ActionTaken[] }> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions`, {
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to fetch actions (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function createTicketAction(
+  ticketId: number,
+  payload: CreateActionTakenPayload
+): Promise<{ action: ActionTaken; message: string }> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to record action (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    (err as any).details = errorData.error?.details;
+    throw err;
+  }
+
+  return res.json();
+}
+
+export async function updateTicketAction(
+  ticketId: number,
+  actionId: number,
+  payload: Partial<CreateActionTakenPayload>
+): Promise<{ action: ActionTaken; message: string }> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions/${actionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const err = new Error(
+      errorData.error?.message || `Failed to update action (HTTP ${res.status})`
+    );
+    (err as any).status = res.status;
+    (err as any).code = errorData.error?.code;
+    (err as any).details = errorData.error?.details;
+    throw err;
+  }
+
+  return res.json();
+}
+

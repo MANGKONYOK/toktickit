@@ -12,12 +12,11 @@
 | PR | Feature Branch | Target Branch | Scope / Feature Area | Reviewer Verdict |
 | :---: | :--- | :--- | :--- | :---: |
 | #1 | `lab4-feature/1-spec-and-test-plan` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboard Metrics, and 8-Tier Test Architecture | **Changes Addressed & Ready** |
-| #2 | `lab4-feature/2-actions-taken-backend` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, and Integration Tests | *Planned* |
-| #3 | `lab4-feature/3-actions-taken-ui` | `lab4-staging` | Actions Taken Timeline on Ticket Detail, Create/Edit Modals, Dynamic Follow-Up Toggle, Requester Read-Only View, and Component Tests | *Planned* |
-| #4 | `lab4-feature/4-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | *Planned* |
-| #5 | `lab4-feature/5-dashboards` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | *Planned* |
-| #6 | `lab4-feature/6-hardening-and-polish` | `lab4-staging` | Zero Horizontal Scroll Responsive Polish, WCAG 2.1 AA Accessibility, Visual Hierarchy, and Safe Error State Hardening | *Planned* |
-| #7 | `lab4-feature/7-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | *Planned* |
+| #2 | `lab4-feat/2-action-taken` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, UI Timeline, and Automated Tests | *Ready for Review* |
+| #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | *Planned* |
+| #4 | `lab4-feature/4-dashboards` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | *Planned* |
+| #5 | `lab4-feature/5-hardening-and-polish` | `lab4-staging` | Zero Horizontal Scroll Responsive Polish, WCAG 2.1 AA Accessibility, Visual Hierarchy, and Safe Error State Hardening | *Planned* |
+| #6 | `lab4-feature/6-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | *Planned* |
 
 ---
 
@@ -71,39 +70,31 @@
 
 ---
 
-### PR #2: Actions Taken Database & Backend APIs (`lab4-feature/2-actions-taken-backend`)
+### PR #2: Actions Taken Full Vertical Slice (`lab4-feat/2-action-taken`)
+
+- **Author Implementation Notes:**
+  - **Database Increment & Prisma Migration:** Added `ActionTaken` model with 1:N relations under `Ticket` (cascade deletion) and `User` (performer), composite index `[ticketId, actionDateTime]`, and applied non-destructive migration `20261002090000_add_action_taken_model`.
+  - **Idempotent Seed Enhancement:** Seeded tickets across various statuses with 0, 1, and multi-staff actions taken, conditional follow-up note requirements, and attachment references with re-run safety.
+  - **Domain Validation & Rules:** Implemented `validateActionTakenInput` and `isTerminalTicketStatus` enforcing strict text bounds (1..2000 chars for `description` and `result`), conditional mandatory note for `followUpRequired=true` (1..1000 chars), and terminal state locks.
+  - **Backend REST APIs:** Implemented `POST /api/tickets/:id/actions`, `GET /api/tickets/:id/actions`, and `PATCH /api/tickets/:id/actions/:actionId` with strict session actor derivation (`req.user.id`), anti-enumeration defense returning 404 for unowned tickets, and terminal state rejection (HTTP 400).
+  - **Frontend UI & Timeline:** Created `ActionsTakenSection.tsx` conforming to Zen Green design tokens, rendering action cards, performer badges, follow-up alerts, and create/edit modal with dynamic follow-up note toggling. Seamlessly mounted in `StaffTicketDetail.tsx` (create/edit enabled) and `TicketDetail.tsx` (requester read-only).
+  - **Automated Tests:** 100% passing across 16 unit tests, 14 API tests, and 7 client component tests (`UNIT-01`, `UNIT-02`, `API-01..04`, `UI-01..02`, `STYLE-01..02`, `AUTH-01..03`). Full regression suite: 227/227 server tests and 82/82 client tests passing.
 
 - **Peer Reviewer Comment (@kmood-Sakura):**
 
   ```text
-  [Pending PR #2 creation]
+  [Pending PR #2 review by @kmood-Sakura]
   ```
 
 - **How I Responded:**
 
   ```text
-  [Pending PR #2 creation]
+  [To be recorded upon peer reviewer response]
   ```
 
 ---
 
-### PR #3: Actions Taken Ticket Detail UI (`lab4-feature/3-actions-taken-ui`)
-
-- **Peer Reviewer Comment (@kmood-Sakura):**
-
-  ```text
-  [Pending PR #3 creation]
-  ```
-
-- **How I Responded:**
-
-  ```text
-  [Pending PR #3 creation]
-  ```
-
----
-
-### PR #4: Ticket Workflow & Concurrency Gate (`lab4-feature/4-workflow-resolution`)
+### PR #3: Ticket Workflow & Concurrency Gate (`lab4-feature/3-workflow-resolution`)
 
 - **Peer Reviewer Comment (@kmood-Sakura):**
 
@@ -156,11 +147,53 @@
 - **Peer Reviewer Comment (@kmood-Sakura):**
 
   ```text
-  [Pending PR #7 creation]
+  [Pending PR #6 creation]
   ```
 
 - **How I Responded:**
 
   ```text
-  [Pending PR #7 creation]
+  [Pending PR #6 creation]
+  ```
+
+
+---
+
+## Pull Requests I Reviewed for My Partner (@kmood-Sakura)
+
+**Partner Repository:** `https://github.com/kmood-Sakura/toktickit`
+
+| PR / Feature | Branch | Target Branch | Review Scope | Reviewer Verdict |
+| :--- | :--- | :--- | :--- | :---: |
+| Feature 1 | `lab4-feature/1-sprint-contract` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboards & 10-Tier Test Architecture | **APPROVED** |
+
+---
+
+### Reviews Given to Partner (@kmood-Sakura)
+
+#### Feature 1: Sprint 4 Engineering Contract & Test Architecture (`lab4-feature/1-sprint-contract`)
+
+- **Review comments provided to partner:**
+
+  ```text
+  Read `299b957` against `lab4-staging` — six documents, +2016 −18, no application code. The pre-implementation discipline is airtight, the traceability is bidirectional, and all numbers hold.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | Genuine pre-implementation discipline — 32 DoD boxes unticked, all 170 test rows `Planned`, 17 UI checklist rows `pending`, zero code claimed | pass |
+  | 2 | Every count in the body holds — 34 FR, 54 BR, 57 AC, 170 tests across 17 test files, measured | pass |
+  | 3 | Bidirectional requirement traceability — all 34 FRs cited by ACs, and all 57 ACs cited by tests in tests.md | pass |
+  | 4 | Clean links and repository hygiene — zero file:/// links, zero local directory leaks, all relative links resolve | pass |
+  | 5 | Version declared uniformly at 4.1.0 across package.json, README.md, and all 4 spec documents | pass |
+  | 6 | reviewer.md Section 1 table has empty rows; README header cites "cut from lab3-staging" | note |
+
+  **Nothing blocks the merge. Approving PR.**
+  ```
+
+- **Partner's response & resolution:**
+
+  ```text
+  [To be recorded upon partner's resolution]
   ```

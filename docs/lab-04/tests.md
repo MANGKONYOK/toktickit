@@ -32,8 +32,8 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `UNIT-01` | Unit | BR-04, AC-04 | Action Taken validation: `followUpRequired=true` with missing or blank `followUpNote`. | Validator function throws validation error. | `server/tests/lab-04/actions-validation.unit.test.ts` | Planned |
-| `UNIT-02` | Unit | BR-05, AC-01 | Action Taken validation: text boundaries for `description` and `result` (1..2000 chars). | Rejects strings with length 0 or > 2000 chars. | `server/tests/lab-04/actions-validation.unit.test.ts` | Planned |
+| `UNIT-01` | Unit | BR-04, AC-04 | Action Taken validation: `followUpRequired=true` with missing or blank `followUpNote`. | Validator function throws validation error. | `server/tests/lab-04/actions-validation.unit.test.ts` | Pass |
+| `UNIT-02` | Unit | BR-05, AC-01 | Action Taken validation: text boundaries for `description` and `result` (1..2000 chars). | Rejects strings with length 0 or > 2000 chars. | `server/tests/lab-04/actions-validation.unit.test.ts` | Pass |
 | `UNIT-03` | Unit | BR-11, AC-10 | Ticket status transition engine: validates 8-state transition matrix. | Permits legal transitions; rejects invalid ones (e.g., `NEW -> RESOLVED`). | `server/tests/lab-04/workflow-engine.unit.test.ts` | Planned |
 
 ---
@@ -42,10 +42,10 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `API-01` | API | FR-02, AC-01 | `POST /api/tickets/:id/actions` with valid payload by IT Staff. | Action created with `performedById` bound to caller session; returns HTTP 201. | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| `API-02` | API | FR-01, AC-07 | `POST /api/tickets/:id/actions` multiple actions by different IT Staff members. | Both actions persisted under parent ticket; returns HTTP 201. | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| `API-03` | API | FR-04, AC-06 | `PATCH /api/tickets/:id/actions/:actionId` update action description and result. | Record updated in DB; `updatedAt` refreshed; returns HTTP 200. | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| `API-04` | API | FR-05, AC-03 | `GET /api/tickets/:id/actions` for owned ticket by Requester. | Returns chronological list of actions; returns HTTP 200. | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| `API-01` | API | FR-02, AC-01 | `POST /api/tickets/:id/actions` with valid payload by IT Staff. | Action created with `performedById` bound to caller session; returns HTTP 201. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| `API-02` | API | FR-01, AC-07 | `POST /api/tickets/:id/actions` multiple actions by different IT Staff members. | Both actions persisted under parent ticket; returns HTTP 201. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| `API-03` | API | FR-04, AC-06 | `PATCH /api/tickets/:id/actions/:actionId` update action description and result. | Record updated in DB; `updatedAt` refreshed; returns HTTP 200. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| `API-04` | API | FR-05, AC-03 | `GET /api/tickets/:id/actions` for owned ticket by Requester. | Returns chronological list of actions; returns HTTP 200. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | `API-05` | API | FR-10, AC-13 | `GET /api/dashboard/requester` calculates accurate open, waiting, and resolved counts. | Metric counts strictly match database state for caller; returns HTTP 200. | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
 | `API-06` | API | FR-10, AC-15 | `GET /api/dashboard/requester` for user with zero tickets. | Returns 0 for all metrics and empty array `[]` for tickets; returns HTTP 200. | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
 | `API-07` | API | FR-12, AC-14 | `GET /api/dashboard/staff` calculates unassigned, assigned-to-me, and status metrics. | Operational counters match authoritative DB queries; returns HTTP 200. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
@@ -57,8 +57,8 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `UI-01` | Component | FR-02, AC-19 | `ActionsTaken` component rendering action cards with performer, date, description, and follow-up. | Renders action cards, displays performer badge, and formats date cleanly. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| `UI-02` | Component | FR-05, AC-02 | `ActionsTaken` component in read-only mode for Requester. | Renders action timeline; hides `Record Action` and `Edit` buttons. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
+| `UI-01` | Component | FR-02, AC-19 | `ActionsTaken` component rendering action cards with performer, date, description, and follow-up. | Renders action cards, displays performer badge, and formats date cleanly. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| `UI-02` | Component | FR-05, AC-02 | `ActionsTaken` component in read-only mode for Requester. | Renders action timeline; hides `Record Action` and `Edit` buttons. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | `UI-03` | Component | FR-11, AC-16 | `RequesterDashboard` component metric cards and drill-down links. | Cards render correct counts and contain hrefs with expected query params. | `client/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
 | `UI-04` | Component | FR-13, AC-17 | `StaffDashboard` component metric cards and urgent tickets list. | Renders unassigned, my tickets, status pills, and urgent attention table. | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
 
@@ -68,8 +68,8 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `STYLE-01` | Style | FR-15, AC-19 | Dashboard metric cards adopt Zen Green tokens (`--zg-surface`, `--zg-border`, `--zg-primary`). | Verified computed styles utilize CSS variables; zero raw hardcoded colors. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| `STYLE-02` | Style | BR-04, AC-19 | Follow-up required badge adopts amber/orange token (`--zg-action-followup-bg`). | Follow-up badge displays distinct amber background and border. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
+| `STYLE-01` | Style | FR-15, AC-19 | Dashboard metric cards adopt Zen Green tokens (`--zg-surface`, `--zg-border`, `--zg-primary`). | Verified computed styles utilize CSS variables; zero raw hardcoded colors. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| `STYLE-02` | Style | BR-04, AC-19 | Follow-up required badge adopts amber/orange token (`--zg-action-followup-bg`). | Follow-up badge displays distinct amber background and border. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 
 ---
 
@@ -87,9 +87,9 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `AUTH-01` | Security | FR-05, AC-02 | `POST /api/tickets/:id/actions` attempted by Requester role. | Denied with HTTP 403 Forbidden (`FORBIDDEN_ROLE`). | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| `AUTH-02` | Security | BR-07, AC-03 | `GET /api/tickets/:id/actions` for unowned ticket by Requester. | Denied with HTTP 404 Not Found (anti-enumeration defense). | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| `AUTH-03` | Security | BR-02, AC-01 | Client attempts to supply spoofed `performedById` in request body. | Body field ignored; record bound strictly to `req.user.id`. | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| `AUTH-01` | Security | FR-05, AC-02 | `POST /api/tickets/:id/actions` attempted by Requester role. | Denied with HTTP 403 Forbidden (`FORBIDDEN_ROLE`). | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| `AUTH-02` | Security | BR-07, AC-03 | `GET /api/tickets/:id/actions` for unowned ticket by Requester. | Denied with HTTP 404 Not Found (anti-enumeration defense). | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| `AUTH-03` | Security | BR-02, AC-01 | Client attempts to supply spoofed `performedById` in request body. | Body field ignored; record bound strictly to `req.user.id`. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | `AUTH-04` | Security | FR-12, AC-14 | `GET /api/dashboard/staff` called by Requester role. | Denied with HTTP 403 Forbidden. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 
 ---
