@@ -996,4 +996,3 @@ export async function updateTicketAction(
 
   return res.json();
 }
-

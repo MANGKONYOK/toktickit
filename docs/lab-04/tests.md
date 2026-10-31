@@ -68,8 +68,8 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `STYLE-01` | Style | FR-15, AC-19 | Dashboard metric cards adopt Zen Green tokens (`--zg-surface`, `--zg-border`, `--zg-primary`). | Verified computed styles utilize CSS variables; zero raw hardcoded colors. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
-| `STYLE-02` | Style | BR-04, AC-19 | Follow-up required badge adopts amber/orange token (`--zg-action-followup-bg`). | Follow-up badge displays distinct amber background and border. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| `STYLE-01` | Style | FR-15, AC-19 | Dashboard metric cards adopt Zen Green tokens (`--zg-surface`, `--zg-border`, `--zg-primary`). | Verified computed styles utilize CSS variables; zero raw hardcoded colors. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
+| `STYLE-02` | Style | BR-04, AC-19 | Follow-up required badge adopts amber/orange token (`--zg-action-followup-bg`). | Follow-up badge displays distinct amber background and border. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
 
 ---
 

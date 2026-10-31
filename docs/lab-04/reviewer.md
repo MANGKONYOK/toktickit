@@ -12,7 +12,7 @@
 | PR | Feature Branch | Target Branch | Scope / Feature Area | Reviewer Verdict |
 | :---: | :--- | :--- | :--- | :---: |
 | #1 | `lab4-feature/1-spec-and-test-plan` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboard Metrics, and 8-Tier Test Architecture | **Changes Addressed & Ready** |
-| #2 | `lab4-feat/2-action-taken` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, UI Timeline, and Automated Tests | *Ready for Review* |
+| #2 | `lab4-feat/2-action-taken` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, UI Timeline, and Automated Tests | **Changes Addressed & Ready** |
 | #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | *Planned* |
 | #4 | `lab4-feature/4-dashboards` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | *Planned* |
 | #5 | `lab4-feature/5-hardening-and-polish` | `lab4-staging` | Zero Horizontal Scroll Responsive Polish, WCAG 2.1 AA Accessibility, Visual Hierarchy, and Safe Error State Hardening | *Planned* |
@@ -83,13 +83,51 @@
 - **Peer Reviewer Comment (@kmood-Sakura):**
 
   ```text
-  [Pending PR #2 review by @kmood-Sakura]
+  Read `d082a5c..e3ea058` against `lab4-staging` — model, migration, seed, validator, three endpoints, the timeline component and 37 new tests. The server slice is solid and the seed problem from Lab 3 is properly fixed. One row in `tests.md` is marked `Pass` without a test behind it, and that has to go before this merges.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | Performer identity is bound from the session and the requester scope check matches the house pattern, so BR-02 and BR-14 hold | pass |
+  | 2 | The seed is idempotent and pushes `TicketSequence` to 4, so app-created tickets cannot collide with the four fixtures | pass |
+  | 3 | The migration is additive only and every count in your body measures true — 16 unit, 14 API, 7 component, 22 server files, 16 client files | pass |
+  | 4 | `tests.md:71` marks `STYLE-01` `Pass`, but no style assertion exists anywhere in `client/tests/lab-04/` | issue |
+  | 5 | `client/src/api.ts` came back with CRLF line endings, so 101 real lines arrive as 1,897 | warning |
+  | 6 | `actions-taken.api.test.ts` creates tickets and actions and never deletes them, unlike your Lab 2 and Lab 3 suites | warning |
+
+  Blocks the merge: #4. Rows 5 and 6 do not.
+
+  #### Issues
+
+  | # | issues | reason |
+  | - | ------ | ------ |
+  | 4 | `STYLE-01` promises "computed styles utilize CSS variables; zero raw hardcoded colors" and is now `Pass`; `STYLE-02` is `Pass` on a test that only checks the follow-up box renders and reads "Follow-Up Required" | No test in `client/tests/lab-04/` touches `getComputedStyle`, `toHaveStyle`, a `--zg-` token or a colour at all, and `ActionsTakenSection.tsx` carries 23 raw hex values with no token behind them, so the claim is not merely untested but false. This is the same shape as Lab 3 Feature 1 — a graded row saying `Pass` where nothing verified it. Either assert the tokens, or put both rows back to `Planned` and let the style tier land with the dashboards. |
+
+  #### Warning
+
+  | # | warnings | reason |
+  | - | -------- | ------ |
+  | 5 | The whole of `api.ts` is rewritten because the file was saved with CRLF and CR terminators; `git diff -w` shows the real change is 101 added lines | Nothing breaks, but a reviewer cannot see what changed in a 1,897-line diff, and the next person to touch that file inherits the churn. `git config core.autocrlf input` on your side and one commit normalising the file would settle it for the rest of the sprint. |
+  | 6 | The suite creates an active ticket, a closed ticket and their actions in `beforeAll` with no `afterAll` cleanup | Your `staff-queue`, `staff-ticket-detail` and `users-admin` suites all clean up, so this is a departure from your own convention. It matters next feature, not now: `API-05` and `API-07` assert dashboard counts "strictly match database state", and every run of this file adds rows those counts will see. |
   ```
 
 - **How I Responded:**
 
   ```text
-  [To be recorded upon peer reviewer response]
+  Agreed completely with peer reviewer @kmood-Sakura and resolved all issues and warnings systematically:
+
+  1. Reset Premature Style Tests in tests.md (Issue #4):
+     - Reverted `STYLE-01` ("Dashboard metric cards adopt Zen Green tokens") and `STYLE-02` ("Follow-up required badge adopts amber/orange token") from `Pass` back to `Planned`.
+     - The style tier and computed style token tests will land legitimately during the Dashboard increment (Feature 4) when dashboard metric cards are constructed.
+
+  2. Line Ending Normalization (Warning #5):
+     - Configured `core.autocrlf input` and normalized `client/src/api.ts` with LF line endings.
+     - Cleaned the diff against `lab4-staging` to display strictly the +101 lines of Action Taken interfaces and endpoints without whitespace churn.
+
+  3. Database Teardown in API Tests (Warning #6):
+     - Added an `afterAll` hook in `server/tests/lab-04/actions-taken.api.test.ts` cleaning up the created active and closed test tickets along with all child actions.
+     - Preserves complete test database isolation and prevents skewing dashboard aggregate count assertions in Feature 4.
   ```
 
 ---

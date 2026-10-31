@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
@@ -90,6 +90,18 @@ describe("Actions Taken API (FR-01..06, BR-01..08, BR-12, BR-14 / AC-01..07)", (
       },
     });
     closedTicketId = closedTicket.id;
+  });
+
+  afterAll(async () => {
+    const ids = [activeTicketId, closedTicketId].filter(Boolean);
+    if (ids.length > 0) {
+      await prisma.actionTaken.deleteMany({
+        where: { ticketId: { in: ids } },
+      });
+      await prisma.ticket.deleteMany({
+        where: { id: { in: ids } },
+      });
+    }
   });
 
   describe("POST /api/tickets/:id/actions — Create Action Taken", () => {
