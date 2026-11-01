@@ -221,3 +221,4 @@ describe("Workflow & Concurrency UI Component Tests (FR-08 / AC-11)", () => {
     expect(options).toEqual(["IN_PROGRESS", "RESOLVED", "CANCELLED"]);
   });
 });
+
