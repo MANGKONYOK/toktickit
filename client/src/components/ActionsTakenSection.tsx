@@ -447,7 +447,7 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
                       <span
                         data-testid={`followup-badge-${act.id}`}
                         style={{
-                          backgroundColor: "#ea580c",
+                          backgroundColor: "var(--zg-amber, #d97706)",
                           color: "#ffffff",
                           fontSize: "0.7rem",
                           fontWeight: 700,
