@@ -77,9 +77,9 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `RESP-01` | Responsive | FR-15, AC-19 | Desktop viewport (1280px): 4-column metric grid and 2-column ticket detail layout. | 4 cards in single row; side-by-side detail panels. | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| `RESP-02` | Responsive | FR-15, AC-20 | Tablet viewport (834px): 2-column metric grid and stacked ticket detail. | 2x2 metric grid; stacked action cards; no horizontal overflow. | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| `RESP-03` | Responsive | FR-15, AC-20 | Mobile viewport (375px): 1-column stacked metric cards and full-width action items. | Single column layout; `scrollWidth <= clientWidth`; zero horizontal scroll. | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| `RESP-01` | Responsive | FR-15, AC-19 | Desktop viewport (1280px): 4-column metric grid and 2-column ticket detail layout. | 4 cards in single row; side-by-side detail panels. | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| `RESP-02` | Responsive | FR-15, AC-20 | Tablet viewport (834px): 2-column metric grid and stacked ticket detail. | 2x2 metric grid; stacked action cards; no horizontal overflow. | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| `RESP-03` | Responsive | FR-15, AC-20 | Mobile viewport (375px): 1-column stacked metric cards and full-width action items. | Single column layout; `scrollWidth <= clientWidth`; zero horizontal scroll. | `e2e/lab-04/dashboards.spec.ts` | Pass |
 
 ---
 
@@ -109,25 +109,25 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `MIG-01` | Migration | FR-01, AC-22 | Schema evolution migration applied over existing Lab 1-3 database. | All legacy users, tickets, attachments, notes, and comments preserved intact. | `server/tests/lab-04/regression-labs1-3.test.ts` | Planned |
-| `REG-01` | Regression | FR-16, AC-22 | Full test suite execution across Labs 1, 2, and 3 regression scenarios. | 100% of previous server, client, and e2e test suites pass. | `server/tests/lab-04/regression-labs1-3.test.ts` | Planned |
-| `E2E-01` | E2E | FR-02, AC-01 | Complete IT Staff Action Taken flow in browser (login, view ticket, record action, verify timeline). | Action logged, timeline refreshes, performer badge verified. | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| `E2E-02` | E2E | FR-07, AC-09 | Complete ticket resolution flow (Requester advisory flag -> IT Staff review & formal resolution). | Both steps complete successfully; status badge reflects `RESOLVED`. | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| `E2E-03` | E2E | FR-11, AC-16 | End-to-end dashboard navigation and drill-down to filtered queues. | Clicking metric cards filters ticket queues accurately. | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| `MIG-01` | Migration | FR-01, AC-22 | Schema evolution migration applied over existing Lab 1-3 database. | All legacy users, tickets, attachments, notes, and comments preserved intact. | `server/tests/lab-04/regression-labs1-3.test.ts` | Pass |
+| `REG-01` | Regression | FR-16, AC-22 | Full test suite execution across Labs 1, 2, and 3 regression scenarios. | 100% of previous server, client, and e2e test suites pass. | `server/tests/lab-04/regression-labs1-3.test.ts` | Pass |
+| `E2E-01` | E2E | FR-02, AC-01 | Complete IT Staff Action Taken flow in browser (login, view ticket, record action, verify timeline). | Action logged, timeline refreshes, performer badge verified. | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| `E2E-02` | E2E | FR-07, AC-09 | Complete ticket resolution flow (Requester advisory flag -> IT Staff review & formal resolution). | Both steps complete successfully; status badge reflects `RESOLVED`. | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| `E2E-03` | E2E | FR-11, AC-16 | End-to-end dashboard navigation and drill-down to filtered queues. | Clicking metric cards filters ticket queues accurately. | `e2e/lab-04/dashboards.spec.ts` | Pass |
 
 ---
 
 ## 3. Acceptance Criteria Traceability Matrix
 
-| Acceptance Criterion | Planned Test ID | Test File Path | Initial Status |
+| Acceptance Criterion | Planned Test ID | Test File Path | Status |
 | :--- | :---: | :--- | :---: |
-| **AC-01** (Action Created with Bound Performer) | `API-01`, `AUTH-03`, `E2E-01` | `server/tests/lab-04/actions-taken.api.test.ts`, `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| **AC-02** (Requester Action Creation Denied 403) | `AUTH-01`, `UI-02` | `server/tests/lab-04/actions-taken.api.test.ts`, `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| **AC-03** (Requester Actions Query Anti-Enumeration) | `API-04`, `AUTH-02` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| **AC-04** (Mandatory Follow-Up Note Validation) | `UNIT-01` | `server/tests/lab-04/actions-validation.unit.test.ts` | Planned |
-| **AC-05** (Optional Follow-Up When Not Required) | `UNIT-02`, `API-01` | `server/tests/lab-04/actions-validation.unit.test.ts` | Planned |
-| **AC-06** (Update Action Taken Record) | `API-03` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| **AC-07** (Multi-Staff Collaborative Actions) | `API-02` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| **AC-01** (Action Created with Bound Performer) | `API-01`, `AUTH-03`, `E2E-01` | `server/tests/lab-04/actions-taken.api.test.ts`, `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| **AC-02** (Requester Action Creation Denied 403) | `AUTH-01`, `UI-02` | `server/tests/lab-04/actions-taken.api.test.ts`, `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| **AC-03** (Requester Actions Query Anti-Enumeration) | `API-04`, `AUTH-02` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| **AC-04** (Mandatory Follow-Up Note Validation) | `UNIT-01` | `server/tests/lab-04/actions-validation.unit.test.ts` | Pass |
+| **AC-05** (Optional Follow-Up When Not Required) | `UNIT-02`, `API-01` | `server/tests/lab-04/actions-validation.unit.test.ts` | Pass |
+| **AC-06** (Update Action Taken Record) | `API-03` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| **AC-07** (Multi-Staff Collaborative Actions) | `API-02` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | **AC-08** (Advisory Requester Resolution) | `FLOW-01`, `E2E-02` | `server/tests/lab-04/ticket-workflow.api.test.ts`, `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
 | **AC-09** (Authoritative IT Staff Resolution) | `FLOW-02`, `E2E-02` | `server/tests/lab-04/ticket-workflow.api.test.ts`, `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
 | **AC-10** (Invalid State Transition Rejected 400) | `UNIT-03` | `server/tests/lab-04/workflow-engine.unit.test.ts` | Pass |
@@ -139,7 +139,7 @@ graph TD
 | **AC-16** (Requester Dashboard Drill-Down) | `UI-03` | `client/tests/lab-04/RequesterDashboard.test.tsx` | Pass |
 | **AC-17** (Staff Dashboard Unassigned Drill-Down) | `UI-04` | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
 | **AC-18** (Staff Dashboard My Active Drill-Down) | `UI-04` | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
-| **AC-19** (Desktop Responsive Timeline & Metrics) | `RESP-01`, `STYLE-01` | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| **AC-20** (Tablet & Mobile Zero Horizontal Scroll) | `RESP-02`, `RESP-03` | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| **AC-19** (Desktop Responsive Timeline & Metrics) | `RESP-01`, `STYLE-01` | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| **AC-20** (Tablet & Mobile Zero Horizontal Scroll) | `RESP-02`, `RESP-03` | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | **AC-21** (Admin Augmented Dashboard with Users) | `API-08` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
-| **AC-22** (Full Labs 1-3 Regression Passing) | `MIG-01`, `REG-01` | `server/tests/lab-04/regression-labs1-3.test.ts` | Planned |
+| **AC-22** (Full Labs 1-3 Regression Passing) | `MIG-01`, `REG-01` | `server/tests/lab-04/regression-labs1-3.test.ts` | Pass |
