@@ -34,7 +34,7 @@ graph TD
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
 | `UNIT-01` | Unit | BR-04, AC-04 | Action Taken validation: `followUpRequired=true` with missing or blank `followUpNote`. | Validator function throws validation error. | `server/tests/lab-04/actions-validation.unit.test.ts` | Pass |
 | `UNIT-02` | Unit | BR-05, AC-01 | Action Taken validation: text boundaries for `description` and `result` (1..2000 chars). | Rejects strings with length 0 or > 2000 chars. | `server/tests/lab-04/actions-validation.unit.test.ts` | Pass |
-| `UNIT-03` | Unit | BR-11, AC-10 | Ticket status transition engine: validates 8-state transition matrix. | Permits legal transitions; rejects invalid ones (e.g., `NEW -> RESOLVED`). | `server/tests/lab-04/workflow-engine.unit.test.ts` | Planned |
+| `UNIT-03` | Unit | BR-11, AC-10 | Ticket status transition engine: validates 8-state transition matrix. | Permits legal transitions; rejects invalid ones (e.g., `NEW -> RESOLVED`). | `server/tests/lab-04/workflow-engine.unit.test.ts` | Pass |
 
 ---
 
@@ -98,10 +98,10 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `FLOW-01` | Workflow | FR-07, AC-08 | Requester clicks "Problem Resolved" on active ticket. | `resolvedByRequester` set to `true`; comment logged; `currentStatus` stays `OPEN`. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| `FLOW-02` | Workflow | FR-07, AC-09 | IT Staff transitions ticket to `RESOLVED` status. | `currentStatus` transitions to `RESOLVED`; returns HTTP 200. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| `FLOW-03` | Concurrency | FR-08, AC-11 | Stale status transition submission with outdated `expectedUpdatedAt`. | Operation rejected with HTTP 409 Conflict and current ticket payload. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| `FLOW-04` | Workflow | BR-12, AC-12 | Attempting to add Action Taken or update status on `CLOSED` ticket. | Rejected with HTTP 400 Bad Request (terminal state locked). | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| `FLOW-01` | Workflow | FR-07, AC-08 | Requester clicks "Problem Resolved" on active ticket. | `resolvedByRequester` set to `true`; comment logged; `currentStatus` stays `OPEN`. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| `FLOW-02` | Workflow | FR-07, AC-09 | IT Staff transitions ticket to `RESOLVED` status. | `currentStatus` transitions to `RESOLVED`; returns HTTP 200. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| `FLOW-03` | Concurrency | FR-08, AC-11 | Status transition concurrency gate (stale timestamp, omitted `expectedUpdatedAt`, or invalid date). | Operation rejected with HTTP 409 Conflict on stale timestamp; rejected with HTTP 400 Bad Request on missing/invalid timestamp. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| `FLOW-04` | Workflow | BR-12, AC-12 | Attempting to add Action Taken or update status on `CLOSED` ticket. | Rejected with HTTP 400 Bad Request (terminal state locked). | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 
 ---
 
@@ -128,11 +128,11 @@ graph TD
 | **AC-05** (Optional Follow-Up When Not Required) | `UNIT-02`, `API-01` | `server/tests/lab-04/actions-validation.unit.test.ts` | Planned |
 | **AC-06** (Update Action Taken Record) | `API-03` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
 | **AC-07** (Multi-Staff Collaborative Actions) | `API-02` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| **AC-08** (Advisory Requester Resolution) | `FLOW-01`, `E2E-02` | `server/tests/lab-04/ticket-workflow.api.test.ts`, `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| **AC-09** (Authoritative IT Staff Resolution) | `FLOW-02`, `E2E-02` | `server/tests/lab-04/ticket-workflow.api.test.ts`, `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| **AC-10** (Invalid State Transition Rejected 400) | `UNIT-03` | `server/tests/lab-04/workflow-engine.unit.test.ts` | Planned |
-| **AC-11** (Optimistic Concurrency Conflict 409) | `FLOW-03` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| **AC-12** (Terminal Ticket Locked 400) | `FLOW-04` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| **AC-08** (Advisory Requester Resolution) | `FLOW-01`, `E2E-02` | `server/tests/lab-04/ticket-workflow.api.test.ts`, `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| **AC-09** (Authoritative IT Staff Resolution) | `FLOW-02`, `E2E-02` | `server/tests/lab-04/ticket-workflow.api.test.ts`, `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| **AC-10** (Invalid State Transition Rejected 400) | `UNIT-03` | `server/tests/lab-04/workflow-engine.unit.test.ts` | Pass |
+| **AC-11** (Optimistic Concurrency Conflict 409) | `FLOW-03` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| **AC-12** (Terminal Ticket Locked 400) | `FLOW-04` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | **AC-13** (Requester Dashboard Calculated Metrics) | `API-05` | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
 | **AC-14** (Staff Dashboard Operational Metrics) | `API-07`, `AUTH-04` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
 | **AC-15** (Requester Empty Metrics & Recent Tickets) | `API-06` | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |

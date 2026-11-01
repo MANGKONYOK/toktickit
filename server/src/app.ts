@@ -14,6 +14,7 @@ import { parseStaffTicketQueryParams } from "./utils/staff-ticket-query.js";
 import {
   isValidStatusTransition,
   isValidTicketStatus,
+  isTerminalStatus,
 } from "./utils/status-transition.js";
 import { uploadMiddleware } from "./utils/upload.js";
 import {
@@ -970,102 +971,112 @@ app.get(
 );
 
 // ---------------------------------------------------------------------------
-// Lab 3 Endpoint — PATCH /api/tickets/:id/resolve-indication
-// Requester indicates problem appears resolved (AC-11 / BR-05)
+// Lab 3 / Lab 4 Endpoint — PATCH /api/tickets/:id/resolve (and alias /resolve-indication)
+// Requester indicates problem appears resolved (AC-08 / AC-11 / BR-10)
 // ---------------------------------------------------------------------------
+const resolveIndicationHandler = async (req: Request, res: Response) => {
+  const correlationId = randomUUID();
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    if (isNaN(ticketId) || ticketId <= 0) {
+      res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
+      });
+      return;
+    }
+
+    // Role check: Only Requesters can indicate problem resolution per specification.md:133 (Denied 403 for Staff/Admin)
+    if (req.user!.role !== Role.REQUESTER) {
+      res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "Only requesters can indicate problem resolution on tickets.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+    });
+
+    if (!ticket) {
+      res.status(404).json({
+        error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+      });
+      return;
+    }
+
+    // Only the ticket requester can indicate resolution on their own ticket (AC-11)
+    if (ticket.requesterId !== req.user!.id) {
+      res.status(404).json({
+        error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
+      });
+      return;
+    }
+
+    // Check terminal states (BR-12 / AC-12)
+    if (ticket.currentStatus === "CLOSED" || ticket.currentStatus === "CANCELLED") {
+      res.status(400).json({
+        error: {
+          code: "TICKET_TERMINAL_LOCKED",
+          message: "Cannot indicate problem resolution on a closed or cancelled ticket.",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: {
+        resolvedByRequester: true,
+      },
+    });
+
+    // If optional comment was provided, record it in Comment table
+    const commentContent = req.body?.comment;
+    if (typeof commentContent === "string" && commentContent.trim().length > 0) {
+      await prisma.comment.create({
+        data: {
+          ticketId,
+          authorId: req.user!.id,
+          content: commentContent.trim(),
+        },
+      });
+    }
+
+    res.status(200).json({
+      ticket: {
+        id: updated.id,
+        status: updated.currentStatus,
+        currentStatus: updated.currentStatus,
+        resolvedByRequester: updated.resolvedByRequester,
+      },
+      message: "Problem resolution indicated successfully.",
+    });
+  } catch (err) {
+    console.error(`[${correlationId}] PATCH /api/tickets/:id/resolve failed:`, err);
+    res.status(500).json({
+      error: { code: "INTERNAL_ERROR", message: "Failed to indicate problem resolution", correlationId },
+    });
+  }
+};
+
 app.patch(
   "/api/tickets/:id/resolve-indication",
   requireAuth,
   requirePasswordChangeClear,
-  async (req: Request, res: Response) => {
-    const correlationId = randomUUID();
-    try {
-      const ticketId = parseInt(req.params.id, 10);
-      if (isNaN(ticketId) || ticketId <= 0) {
-        res.status(400).json({
-          error: { code: "VALIDATION_ERROR", message: "Invalid ticket ID", correlationId },
-        });
-        return;
-      }
+  resolveIndicationHandler
+);
 
-      // Role check: Only Requesters can indicate problem resolution per specification.md:133 (Denied 403 for Staff/Admin)
-      if (req.user!.role !== Role.REQUESTER) {
-        res.status(403).json({
-          error: {
-            code: "FORBIDDEN",
-            message: "Only requesters can indicate problem resolution on tickets.",
-            correlationId,
-          },
-        });
-        return;
-      }
-
-      const prisma = getPrisma();
-      const ticket = await prisma.ticket.findUnique({
-        where: { id: ticketId },
-      });
-
-      if (!ticket) {
-        res.status(404).json({
-          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
-        });
-        return;
-      }
-
-      // Only the ticket requester can indicate resolution on their own ticket (AC-11)
-      if (ticket.requesterId !== req.user!.id) {
-        res.status(404).json({
-          error: { code: "TICKET_NOT_FOUND", message: "Ticket not found", correlationId },
-        });
-        return;
-      }
-
-      // Check terminal states
-      if (ticket.currentStatus === "CLOSED" || ticket.currentStatus === "CANCELLED") {
-        res.status(400).json({
-          error: {
-            code: "INVALID_ACTION",
-            message: "Cannot indicate problem resolution on a closed or cancelled ticket.",
-            correlationId,
-          },
-        });
-        return;
-      }
-
-      const updated = await prisma.ticket.update({
-        where: { id: ticketId },
-        data: {
-          resolvedByRequester: true,
-        },
-      });
-
-      // If optional comment was provided, record it in Comment table
-      const commentContent = req.body?.comment;
-      if (typeof commentContent === "string" && commentContent.trim().length > 0) {
-        await prisma.comment.create({
-          data: {
-            ticketId,
-            authorId: req.user!.id,
-            content: commentContent.trim(),
-          },
-        });
-      }
-
-      res.status(200).json({
-        ticket: {
-          id: updated.id,
-          status: updated.currentStatus,
-          resolvedByRequester: updated.resolvedByRequester,
-        },
-        message: "Problem resolution indicated successfully.",
-      });
-    } catch (err) {
-      console.error(`[${correlationId}] PATCH /api/tickets/:id/resolve-indication failed:`, err);
-      res.status(500).json({
-        error: { code: "INTERNAL_ERROR", message: "Failed to indicate problem resolution", correlationId },
-      });
-    }
-  }
+app.patch(
+  "/api/tickets/:id/resolve",
+  requireAuth,
+  requirePasswordChangeClear,
+  resolveIndicationHandler
 );
 
 // ---------------------------------------------------------------------------
@@ -1811,93 +1822,218 @@ app.patch(
   }
 );
 
-// PATCH /api/staff/tickets/:id/status — Transition ticket status per BR-14
+// ---------------------------------------------------------------------------
+// Lab 3 / Lab 4 Endpoint — PATCH /api/tickets/:id/status (and alias /api/staff/tickets/:id/status)
+// Transition ticket status per BR-11, BR-12, BR-13, FR-07, FR-08 (AC-09, AC-10, AC-11, AC-12)
+// ---------------------------------------------------------------------------
+const transitionTicketStatusHandler = async (req: Request, res: Response) => {
+  const correlationId = `req-${randomUUID()}`;
+  const ticketId = parseInt(req.params.id, 10);
+
+  if (isNaN(ticketId) || ticketId <= 0) {
+    res.status(400).json({
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Ticket ID must be a positive integer",
+        correlationId,
+      },
+    });
+    return;
+  }
+
+  const { status, expectedUpdatedAt } = req.body;
+  if (!status || !isValidTicketStatus(status)) {
+    res.status(400).json({
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "status is required and must be a valid TicketStatus value",
+        correlationId,
+      },
+    });
+    return;
+  }
+
+  // Concurrency gate validation per api-spec.md:153 and FR-08 (Issue #4)
+  const isLab4Route =
+    req.originalUrl?.includes("/api/tickets/") &&
+    !req.originalUrl?.includes("/api/staff/tickets/");
+
+  if (isLab4Route) {
+    if (
+      !expectedUpdatedAt ||
+      typeof expectedUpdatedAt !== "string" ||
+      isNaN(new Date(expectedUpdatedAt).getTime())
+    ) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message:
+            "expectedUpdatedAt is required and must be a valid ISO-8601 timestamp string",
+          correlationId,
+        },
+      });
+      return;
+    }
+  } else if (expectedUpdatedAt !== undefined) {
+    if (
+      typeof expectedUpdatedAt !== "string" ||
+      isNaN(new Date(expectedUpdatedAt).getTime())
+    ) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "expectedUpdatedAt must be a valid ISO-8601 timestamp string",
+          correlationId,
+        },
+      });
+      return;
+    }
+  }
+
+  try {
+    const prisma = getPrisma();
+    const existingTicket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+    });
+
+    if (!existingTicket) {
+      res.status(404).json({
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: `Ticket with ID ${ticketId} not found`,
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Terminal state check per BR-12 / AC-12: CLOSED or CANCELLED tickets cannot be updated
+    if (isTerminalStatus(existingTicket.currentStatus)) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_STATUS_TRANSITION",
+          message: `Cannot transition status: ticket is in terminal state ${existingTicket.currentStatus}`,
+          details: { terminal: true },
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    if (!isValidStatusTransition(existingTicket.currentStatus, status as TicketStatus)) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_STATUS_TRANSITION",
+          message: `Cannot transition status from ${existingTicket.currentStatus} to ${status}`,
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    // Optimistic Concurrency Control per FR-08 / BR-13 / AC-11
+    if (expectedUpdatedAt !== undefined) {
+      const expectedTime = new Date(expectedUpdatedAt).getTime();
+      const currentTime = new Date(existingTicket.updatedAt).getTime();
+      if (expectedTime !== currentTime) {
+        res.status(409).json({
+          error: {
+            code: "CONCURRENCY_CONFLICT",
+            message:
+              "This ticket was modified by another user while you were viewing it. Please reload the latest ticket state before making changes.",
+            details: {
+              currentUpdatedAt: existingTicket.updatedAt.toISOString(),
+              currentStatus: existingTicket.currentStatus,
+            },
+            correlationId,
+          },
+        });
+        return;
+      }
+    }
+
+    const previousStatus = existingTicket.currentStatus;
+
+    // Atomic compare-and-write to eliminate TOCTOU race condition (Warning #6)
+    const updateResult = await prisma.ticket.updateMany({
+      where: {
+        id: ticketId,
+        updatedAt: existingTicket.updatedAt,
+      },
+      data: {
+        currentStatus: status as TicketStatus,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      const freshTicket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+      res.status(409).json({
+        error: {
+          code: "CONCURRENCY_CONFLICT",
+          message:
+            "This ticket was modified by another user while you were viewing it. Please reload the latest ticket state before making changes.",
+          details: {
+            currentUpdatedAt:
+              freshTicket?.updatedAt.toISOString() || new Date().toISOString(),
+            currentStatus:
+              freshTicket?.currentStatus || existingTicket.currentStatus,
+          },
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const updated = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+    });
+
+    // Return flat spec fields (Warning #5 / api-spec.md:166) and nested ticket for backwards compatibility
+    res.status(200).json({
+      id: updated.id,
+      ticketNumber: updated.ticketNumber,
+      status: updated.currentStatus,
+      currentStatus: updated.currentStatus,
+      previousStatus,
+      updatedAt: updated.updatedAt.toISOString(),
+      ticket: {
+        id: updated.id,
+        ticketNumber: updated.ticketNumber,
+        status: updated.currentStatus,
+        currentStatus: updated.currentStatus,
+        previousStatus,
+        updatedAt: updated.updatedAt.toISOString(),
+      },
+      message: "Status transitioned successfully.",
+    });
+  } catch (error) {
+    console.error(`[${correlationId}] Failed to transition ticket status:`, error);
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to transition ticket status",
+        correlationId,
+      },
+    });
+  }
+};
+
+app.patch(
+  "/api/tickets/:id/status",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  transitionTicketStatusHandler
+);
+
 app.patch(
   "/api/staff/tickets/:id/status",
   requireAuth,
   requirePasswordChangeClear,
   requireRole(Role.IT_STAFF, Role.ADMIN),
-  async (req: Request, res: Response) => {
-    const correlationId = `req-${randomUUID()}`;
-    const ticketId = parseInt(req.params.id, 10);
-
-    if (isNaN(ticketId) || ticketId <= 0) {
-      res.status(400).json({
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "Ticket ID must be a positive integer",
-          correlationId,
-        },
-      });
-      return;
-    }
-
-    const { status } = req.body;
-    if (!status || !isValidTicketStatus(status)) {
-      res.status(400).json({
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "status is required and must be a valid TicketStatus value",
-          correlationId,
-        },
-      });
-      return;
-    }
-
-    try {
-      const prisma = getPrisma();
-      const existingTicket = await prisma.ticket.findUnique({
-        where: { id: ticketId },
-      });
-
-      if (!existingTicket) {
-        res.status(404).json({
-          error: {
-            code: "TICKET_NOT_FOUND",
-            message: `Ticket with ID ${ticketId} not found`,
-            correlationId,
-          },
-        });
-        return;
-      }
-
-      if (!isValidStatusTransition(existingTicket.currentStatus, status as TicketStatus)) {
-        res.status(400).json({
-          error: {
-            code: "INVALID_STATUS_TRANSITION",
-            message: `Cannot transition status from ${existingTicket.currentStatus} to ${status}`,
-            correlationId,
-          },
-        });
-        return;
-      }
-
-      const updated = await prisma.ticket.update({
-        where: { id: ticketId },
-        data: {
-          currentStatus: status as TicketStatus,
-        },
-      });
-
-      res.status(200).json({
-        ticket: {
-          id: updated.id,
-          status: updated.currentStatus,
-          currentStatus: updated.currentStatus,
-        },
-        message: "Status transitioned successfully.",
-      });
-    } catch (error) {
-      console.error(`[${correlationId}] Failed to transition ticket status:`, error);
-      res.status(500).json({
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to transition ticket status",
-          correlationId,
-        },
-      });
-    }
-  }
+  transitionTicketStatusHandler
 );
 
 // POST /api/staff/tickets/:id/notes (and alias /api/tickets/:id/internal-notes) — Add private internal note

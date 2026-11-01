@@ -160,17 +160,28 @@
   }
   ```
 - **Concurrency & Validation Rules:**
-  1. The API fetches the ticket and compares `ticket.updatedAt.toISOString()` with `expectedUpdatedAt`.
-  2. If the timestamps do not match, the request is aborted and returns `HTTP 409 Conflict`.
-  3. The requested `status` must be a valid transition from `ticket.currentStatus` per the status graph.
+  1. The endpoint strictly requires `expectedUpdatedAt` as an ISO-8601 timestamp string. If missing or invalid, returns `HTTP 400 Bad Request` (`VALIDATION_ERROR`).
+  2. The API fetches the ticket and verifies that `ticket.updatedAt.toISOString()` matches `expectedUpdatedAt`. If timestamps do not match, the request is aborted with `HTTP 409 Conflict` (`CONCURRENCY_CONFLICT`).
+  3. The compare-and-write operation is executed atomically (`updateMany`) to prevent TOCTOU race conditions where concurrent requests submit the same timestamp.
+  4. The requested `status` must be a valid transition from `ticket.currentStatus` per the 8-state transition graph.
 - **Response `200 OK`:**
   ```json
   {
     "id": 12,
     "ticketNumber": "TKT-2026-000012",
     "currentStatus": "RESOLVED",
+    "status": "RESOLVED",
+    "previousStatus": "IN_PROGRESS",
     "updatedAt": "2026-10-02T09:20:15.000Z",
-    "previousStatus": "IN_PROGRESS"
+    "ticket": {
+      "id": 12,
+      "ticketNumber": "TKT-2026-000012",
+      "status": "RESOLVED",
+      "currentStatus": "RESOLVED",
+      "previousStatus": "IN_PROGRESS",
+      "updatedAt": "2026-10-02T09:20:15.000Z"
+    },
+    "message": "Status transitioned successfully."
   }
   ```
 - **Response `409 Conflict`:**
