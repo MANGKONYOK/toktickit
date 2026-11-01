@@ -1,48 +1,45 @@
 # TokTickIT - IT Service Desk Web Application
 
-TokTickIT is an enterprise IT service desk web application built to manage Account and Access, Hardware, Software, and Network support requests. This repository contains the complete **Sprint 3: Users, Roles, IT Staff Ticketing, and Admin Screens** release, demonstrating full-stack integration between a React UI, Express REST API, Prisma ORM, and PostgreSQL database.
+TokTickIT is an enterprise IT service desk web application built to manage Account and Access, Hardware, Software, and Network support requests. This repository contains the complete **Sprint 4: Actions Taken, Ticket Resolution & Concurrency Control, Role Dashboards, and Multi-Viewport Release** delivery, showcasing full-stack integration between a React 18 frontend, Express REST API, Prisma ORM, and PostgreSQL database.
 
 ---
 
-## 🌟 Sprint 3 Features
+## 🌟 Sprint 4 Features
 
-### 1. Authentication Foundation & Session Management
-- **Bcrypt Password Hashing:** Salt rounds $\ge 10$; plaintext passwords are never stored in the database.
-- **Anti-Enumeration Defense:** Backend verifies the password before inspecting account active status (BR-04), returning generic HTTP 401 Unauthorized for unknown emails and bad passwords alike to prevent user enumeration.
-- **Cryptographic Session Signing:** Sessions use HTTP-only signed cookies (`toktickit_session`) or HMAC-SHA256 Bearer tokens verified in constant time (`crypto.timingSafeEqual`) to eliminate session forgery.
-- **Mandatory First-Login Password Change:** Accounts flagged with `mustChangePassword = true` are intercepted by server middleware (HTTP 403 `MUST_CHANGE_PASSWORD`) and gated by a modal enforcing password complexity ($\ge 8$ characters, uppercase, lowercase, number, and special symbol).
-- **Graceful Deactivation Feedback:** Valid credentials on inactive accounts return a distinct HTTP 403 `ACCOUNT_INACTIVE` error alert without leaking registration status.
+### 1. Actions Taken Audit Trail & Data Model
+- **Additive Database Schema:** Dedicated `ActionTaken` model with 1:N relations under `Ticket` and `User`, preserving non-destructive migration (`20261002090000_add_action_taken_model`) and 100% backward compatibility with Labs 1–3 data models.
+- **Session-Bound Identity:** Performer identity is derived strictly from the authenticated session (`req.user.id`), preventing client identity spoofing or tampering (`AC-01`, `AUTH-03`).
+- **REST Lifecycle Endpoints:** Four secure endpoints (`POST`, `GET`, `PATCH /api/tickets/:id/actions`) restricted to authorized staff and administrators (`AC-02`, `AUTH-01`).
+- **Dynamic Follow-Up Validation:** Submitting an action with `followUpRequired = true` enforces non-empty `followUpNote` validation at both frontend UI and API boundary (`AC-04`, `AC-05`).
+- **Multi-Role Timeline UI:**
+  - **IT Staff View:** Interactive action logging modal, inline action cards with timestamps, duration, performer role badges, and edit controls.
+  - **Requester View:** Clean, read-only chronological timeline displaying performed actions and reassuring follow-up status badges (`AC-19`).
 
-### 2. Role-Based Access Control (RBAC) & Navigation
-- **Server-Side Enforcement:** Route-level middleware (`requireAuth`, `requirePasswordChangeClear`, `requireRole`) protects all endpoints according to 3 distinct roles: `REQUESTER`, `IT_STAFF`, and `ADMIN`.
-- **Capability Matrix:** 17 capabilities x 4 actors (Unauthenticated, Requester, IT Staff, Admin) with explicit HTTP 401 vs. 403 status code distinctions in every cell.
-- **Role-Aware UI Shell:** Dynamic navigation bar rendering role badges, dedicated navigation tabs (`My Tickets`, `Create Ticket`, `IT Queue`, `User Management`), and clean session termination on logout.
+### 2. Governed Lifecycle, Resolution Gate & Concurrency Control
+- **Advisory Requester Resolution:** Requesters can indicate that their issue is resolved (`resolvedByRequester = true` via `PATCH /api/tickets/:id/resolve`), posting an automated discussion comment without prematurely closing the operational workflow (`AC-08`).
+- **Authoritative Resolution Gate:** Only IT Staff and Administrators have authority to formally transition tickets to `RESOLVED` or `CLOSED` (`AC-09`).
+- **Optimistic Concurrency Control (OCC):** Status transitions mandate an `expectedUpdatedAt` concurrency token matching the current database timestamp. Stale writes return `HTTP 409 Conflict` (`STALE_UPDATE`), preventing silent race-condition overwrites (`AC-11`).
+- **Interactive Stale Conflict UI:** The frontend intercepts HTTP 409, preserves unsaved user form inputs, displays a prominent conflict warning banner, and offers a single-click state reload.
+- **Terminal State Locking:** Tickets in `CLOSED` or `CANCELLED` status are strictly immutable; any subsequent status transitions or action creations are rejected with `HTTP 400 Bad Request` (`AC-12`).
 
-### 3. Requester Ticket Continuity & Isolation
-- **Session Identity Binding:** Ticket creation is bound strictly to `req.user.id`, ignoring client-supplied identity headers.
-- **Multi-Tenant Ownership Isolation:** Accessing a ticket unowned by the requester returns HTTP 404 Not Found (rather than 403) to eliminate ticket ID existence leakage.
-- **Public Discussion Stream:** Real-time chronological discussion stream with author role badges (`REQUESTER`, `IT_STAFF`, `ADMIN`).
-- **Problem Resolution Flag:** Requesters can indicate that their issue appears resolved (`resolvedByRequester = true`), displaying an acknowledgment banner while leaving operational ticket lifecycle status governed by IT Staff.
+### 3. Role-Based Operational Dashboards & Analytics
+- **Authoritative PostgreSQL Aggregates:** Computed exclusively using lightweight Prisma `.count()` and `.groupBy()` aggregates directly in PostgreSQL, eliminating memory bloat and client-side recalculation overhead.
+- **Requester Dashboard:** 4 Zen Green metric cards (`Total Open`, `Waiting for Your Input` with amber alert styling when $> 0$, `Updated in Past 7 Days`, `Resolved & Closed`), top 5 recent requests table, and quick ticket creation CTA (`AC-13`, `AC-15`).
+- **Staff Operational Dashboard:** 4 operational counters (`Unassigned Tickets`, `My Active Tickets`, `Awaiting Feedback`, `Urgent Attention`), real-time status and priority distribution progress bars, and recent actions log (`AC-14`).
+- **Administrator Augmented View:** Augmented staff operational view featuring user directory statistics (`totalUsers`, `activeUsers`, `inactiveUsers`, and role breakdown) (`AC-21`).
+- **URL-Driven Filter Drill-Down & Lifecycle Reset:** Metric cards route directly to pre-filtered queues (`/tickets?tab=open`, `/staff/tickets?assigned=unassigned`, etc.) with automated filter reset on navbar navigation to prevent filter residue (`AC-16`, `AC-17`, `AC-18`).
 
-### 4. IT Staff Ticket Queue & Triage
-- **Keyword Substring Search:** Filter tickets instantly by Ticket Number (e.g., `TKT-2026-000001`) or summary keywords.
-- **Multi-Criteria Filtering:** Filter by Category, Requested Priority, Operational Status, and Assignment (`All`, `Unassigned`, `Assigned to Me`).
-- **Deterministic Pagination:** Primary sorting by Date or Priority combined with a secondary `id DESC` tie-breaker to ensure stable pagination where records never shift across pages.
-- **Responsive Layout:** Expanded data table on desktop ($\ge 992\text{px}$) and tablet ($768\text{px}-991\text{px}$), transforming into touch-friendly stacked cards on mobile ($< 768\text{px}$) with $\ge 44\text{px}$ touch targets.
+### 4. Zen Green Design System & Responsive Reflow
+- **Design Token Conformance:** Strict adherence to Zen Green design tokens (`--zg-primary`, `--zg-surface`, `--zg-border`, `--zg-amber`, `--zg-action-followup-bg`) with zero raw hardcoded hex colors (`STYLE-01`, `STYLE-02`).
+- **Three Responsive Viewports:**
+  - **Desktop ($\ge 1280\text{px}$):** 4-column metric card grid and 2-column ticket detail layout (`RESP-01`).
+  - **Tablet ($768\text{px} - 991\text{px}$):** 2x2 metric card grid and vertically stacked detail panels (`RESP-02`).
+  - **Mobile ($< 768\text{px}$):** 1-column vertically stacked cards with touch-friendly touch targets ($\ge 44\text{px}$) and zero horizontal scrollbar overflow (`RESP-03`).
 
-### 5. Staff Ticket Detail & Operational Lifecycle
-- **Ownership Claim & Reassignment:** One-click ticket claiming ("Claim Ticket") and assignment dropdown targeting active IT Staff members.
-- **IT Priority Override:** IT Staff can adjust operational priority independently of the requester's requested priority.
-- **8 Governed Status Transitions:** Server enforces strict status graph rules (`NEW -> OPEN, CANCELLED`, `OPEN -> IN_PROGRESS, WAITING_FOR_REQUESTER, RESOLVED, CANCELLED`, etc.). Invalid transitions are rejected with HTTP 400.
-- **Confidential Internal Notes:** Private notes styled with distinct amber cards (`#FFFBEB`), 4px amber border (`#B45309`), and lock icons. Omitted entirely from requester database queries; direct endpoint access returns HTTP 403.
-- **Attachment Continuity:** Attachment upload, metadata inspection, and authenticated binary downloads accessible across Requester and IT Staff roles.
-
-### 6. Administrator User Management & Safety Guardrails
-- **User Directory Administration:** Directory listing with search by name/email, role filtering, creation of accounts with single permitted role, and profile editing.
-- **Administrative Password Reset:** Generates a new initial password and flags the account for mandatory password change at next login.
-- **Self-Deactivation Prevention (BR-18):** Administrators cannot deactivate their own active account (HTTP 400 `CANNOT_DEACTIVATE_SELF`).
-- **Last Active Administrator Protection (BR-19):** Deactivating or demoting the last active administrator is rejected (HTTP 400 `LAST_ADMIN_PROTECTED`).
-- **Write Skew Prevention:** Guardrail checks and user mutations are wrapped in an interactive Prisma transaction with **Serializable isolation** (`TransactionIsolationLevel.Serializable`), preventing race condition lockouts when two administrators concurrently demote each other.
+### 5. Multi-Tier Automated Verification & 100% Cross-Lab Regression
+- **10-Tier Test Architecture:** Unit, validation, API integration, authorization, workflow concurrency, UI component, responsive reflow, and Playwright browser E2E test suites.
+- **100% Cross-Lab Regression:** Comprehensive database integration suite (`regression-labs1-3.test.ts`) verifying backward compatibility across Labs 1, 2, 3, and 4 with complete test isolation and teardown (`AC-22`, `MIG-01`, `REG-01`).
+- **Visual Artifacts:** 10 verified screenshot artifacts captured across Desktop, Tablet, and Mobile viewports preserved in `artifacts/lab-04/screenshots/`.
 
 ---
 
@@ -52,7 +49,7 @@ TokTickIT is an enterprise IT service desk web application built to manage Accou
 - **Backend:** Node.js, Express, TypeScript, Prisma ORM, PostgreSQL, Bcrypt, Cookie-Parser, Multer, Supertest, Vitest
 - **E2E & Responsive Automation:** Playwright (Desktop 1280x800, Tablet 768x1024, Mobile 375x667)
 - **Database:** PostgreSQL 17 (Docker container)
-- **Workflow:** Git Flow (`main` release, `lab3-staging` integration, `lab3-feature/*` sprint branches), GitHub Projects Kanban, Peer Code Reviews with `@kmood-Sakura`
+- **Workflow:** Git Flow (`main` release, `lab4-staging` integration, `lab4-feature/*` sprint branches), GitHub Projects Kanban, Peer Code Reviews with `@kmood-Sakura`
 
 ---
 
@@ -82,45 +79,52 @@ The database seed provisions 11 accounts across all 3 roles with a default passw
 toktickit/
 ├── artifacts/
 │   ├── lab-02/screenshots/     # Sprint 2 visual evidence
-│   └── lab-03/screenshots/     # Sprint 3 visual evidence across viewports
-│       ├── authentication/     # Login desktop, error alerts, password change modal, mobile login
-│       ├── staff-queue/        # Staff queue desktop, filtered queue, mobile cards
-│       ├── staff-ticket-detail/# Operational controls, amber internal notes, comments stream, mobile
-│       └── user-management/    # Admin user table, create user modal, guardrail alert, mobile cards
+│   ├── lab-03/screenshots/     # Sprint 3 visual evidence across viewports
+│   └── lab-04/screenshots/     # Sprint 4 visual evidence across viewports
+│       ├── actions-taken/      # Staff timeline, record action modal, requester read-only view
+│       ├── dashboards/         # Requester & staff dashboards across desktop, tablet, mobile
+│       └── ticket-resolution/  # Advisory resolution, staff formal resolution, concurrency conflict dialog
 ├── client/                     # React 18 + TypeScript Vite frontend
 │   ├── src/
-│   │   ├── components/         # Login, ChangePasswordModal, StaffTicketQueue, StaffTicketDetail, UserManagement...
-│   │   ├── context/            # AuthContext (session, login/logout, role state), RequesterContext
+│   │   ├── components/         # ActionsTakenSection, RequesterDashboard, StaffDashboard, StaffTicketDetail...
+│   │   ├── context/            # AuthContext (session, role state), RequesterContext
 │   │   ├── api.ts              # Fetch client with credentials and standard error envelopes
 │   │   └── index.css           # Zen Green Design Tokens and responsive rules
 │   └── tests/
 │       ├── lab-01/             # Lab 1 baseline tests
 │       ├── lab-02/             # Sprint 2 regression component tests
-│       └── lab-03/             # Sprint 3 Vitest component & responsive suites (15 files, 75 passed)
+│       ├── lab-03/             # Sprint 3 Vitest component & responsive suites
+│       └── lab-04/             # Sprint 4 Vitest component & style suites (20 files, 106 passed)
 ├── server/                     # Express + TypeScript backend
-│   ├── prisma/                 # Schema (User, Role, Comment, InternalNote), migrations, seed.ts
+│   ├── prisma/                 # Schema (User, Ticket, ActionTaken, Comment, Note), migrations, seed.ts
 │   ├── src/
 │   │   ├── middleware/         # auth.ts (requireAuth, requirePasswordChangeClear, requireRole)
-│   │   ├── routes/             # authRouter, ticketsRouter, staffRouter, adminRouter, attachmentsRouter
-│   │   ├── utils/              # password-validator, ticket-number generator, upload config
+│   │   ├── routes/             # authRouter, ticketsRouter, staffRouter, adminRouter, dashboardRouter...
+│   │   ├── utils/              # dashboard-query, actions-validation, workflow-engine, ticket-number...
 │   │   └── app.ts              # Express application and route mounts
 │   └── tests/
 │       ├── lab-01/             # Lab 1 baseline tests
 │       ├── lab-02/             # Sprint 2 regression integration tests
-│       └── lab-03/             # Sprint 3 API & security integration suites (20 files, 197 passed)
+│       ├── lab-03/             # Sprint 3 API & security integration suites
+│       └── lab-04/             # Sprint 4 API, workflow, and regression suites (27 files, 279 passed)
 ├── docs/
 │   ├── lab-01/                 # Sprint 1 documentation
 │   ├── lab-02/                 # Sprint 2 engineering records
-│   └── lab-03/                 # Sprint 3 engineering contract & delivery records
+│   ├── lab-03/                 # Sprint 3 engineering records
+│   └── lab-04/                 # Sprint 4 engineering contract & delivery records
 │       ├── specification.md    # 11-section System Specification, RBAC Matrix, 25 BRs, 22 ACs, DoD
-│       ├── api-spec.md         # Complete REST API Contract (18 endpoints)
+│       ├── api-spec.md         # Complete REST API Contract (25 endpoints)
 │       ├── ui-spec.md          # Zen Green Design Tokens, Screen Layouts, Visual Checklist
 │       ├── tests.md            # 8-tier Test Plan, Traceability Matrix, and 100% Pass Records
 │       ├── reviewer.md         # Peer Review Transcript & Resolution Log with @kmood-Sakura
-│       └── ai-use.md           # AI Prompt Records and Engineering Reflections
+│       └── ai-use.md           # AI Prompt Records and Engineering Reflections (10 key prompts)
 ├── e2e/
 │   ├── lab-02/                 # Sprint 2 Playwright user journey suites
-│   └── lab-03/                 # Sprint 3 Playwright Multi-Viewport E2E Suites (3 viewports, 19 passed)
+│   ├── lab-03/                 # Sprint 3 Playwright multi-viewport E2E suites
+│   └── lab-04/                 # Sprint 4 Playwright E2E suites (3 specs, 18 passed across viewports)
+│       ├── actions-taken-flow.spec.ts  # End-to-end IT Staff action logging and requester view
+│       ├── dashboards.spec.ts          # Requester/staff dashboard metrics, drill-down, and reflow
+│       └── ticket-resolution.spec.ts   # Advisory flag, resolution gate, and concurrency conflict
 ├── playwright.config.ts        # Playwright multi-project configuration (Desktop, Tablet, Mobile)
 ├── .gitignore                  # Git hygiene rules (node_modules, .env, uploads, test-results)
 └── README.md                   # Project documentation and setup guide
@@ -205,7 +209,7 @@ cd server
 # Run Prisma schema migrations
 npx prisma migrate dev
 
-# Seed Users, Categories, Related Systems, and TicketSequence
+# Seed Users, Categories, Related Systems, Tickets, and Actions Taken
 npm run prisma:seed
 ```
 
@@ -223,34 +227,34 @@ cd server && npm run dev
 cd client && npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser and sign in with any of the seeded credentials (e.g. `admin.toktickit@email.com` / `Password@2026`).
+Open [http://localhost:5173](http://localhost:5173) in your browser and sign in with any of the seeded credentials (e.g., `somchai.it@email.com` / `Password@2026`).
 
 ---
 
 ## 🧪 Automated Testing & Verification
 
-TokTickIT enforces an 8-tier automated testing strategy (100% green across all tiers):
+TokTickIT enforces a rigorous automated testing strategy across all tiers (100% green):
 
 ```bash
-# 1. Server Unit, API Integration, and Security Tests (20 test files, 197 tests)
+# 1. Server Unit, API Integration, Concurrency, and Regression Tests (27 files, 279 tests)
 cd server && npm test
 
-# 2. Client Component, Responsive, and Zen Green Style Tests (15 test files, 75 tests)
+# 2. Client Component, Responsive, and Zen Green Style Tests (20 files, 106 tests)
 cd client && npm test
 
-# 3. Playwright Multi-Viewport End-to-End Suites across 3 Viewports (19 passed)
-npx playwright test e2e/lab-03/
+# 3. Playwright Multi-Viewport End-to-End Suites (3 specs across Desktop, Tablet, Mobile: 18 passed)
+npx playwright test e2e/lab-04/
 ```
 
 ### Test Suite Summary
 
-- **Server Tests (`server/tests/lab-03/`):** Password complexity unit validation (`UNIT-01`), 8-state transition graph unit validation (`UNIT-02`), database migration & seed idempotency (`MIG-01`), authentication endpoints (`API-01..07`), RBAC authorization & 403 checks (`API-08..09`), session-bound requester tickets (`API-10..14`), public comments & internal notes confidentiality (`API-15..18`), staff queue search & filtering (`API-19..20`), staff ticket operational controls (`API-21..24`), and administrator user management & safety guardrails (`API-25..27`).
-- **Client Tests (`client/tests/lab-03/`):** Login form validation & error alerts (`UI-01`), ChangePasswordModal dynamic checklist (`UI-02`), TicketDetail public comments stream (`UI-03`), MyTickets user isolation (`UI-04`), StaffTicketQueue search, filtering, and sorting (`UI-05`), StaffTicketDetail operational controls & amber notes (`UI-06`), UserManagement administration & guardrails (`UI-07`), Navbar role navigation (`UI-08`), and Zen Green responsive styling.
-- **E2E Tests (`e2e/lab-03/`):** Multi-viewport Playwright journeys (`authentication.spec.ts`, `staff-ticket-flow.spec.ts`, `user-administration.spec.ts`) executing across Desktop (1280x800), Tablet (768x1024), and Mobile (375x667).
+- **Server Tests (`server/tests/`):** 279 tests passing across 27 test files covering action validation unit tests (`actions-validation.unit.test.ts`), workflow state machine (`workflow-engine.unit.test.ts`), password validator, actions REST APIs (`actions-taken.api.test.ts`), ticket resolution gate & concurrency conflict (`ticket-workflow.api.test.ts`), requester & staff dashboards (`requester-dashboard.api.test.ts`, `staff-dashboard.api.test.ts`), and the full cross-lab database regression suite (`regression-labs1-3.test.ts`).
+- **Client Tests (`client/tests/`):** 106 tests passing across 20 test files covering `ActionsTaken.test.tsx` (action timeline, follow-up validation, requester view), `RequesterDashboard.test.tsx`, `StaffDashboard.test.tsx`, `DashboardStyles.test.tsx` (Zen Green CSS tokens, zero raw hex colors), login, password change, queue filters, and user administration.
+- **E2E Tests (`e2e/lab-04/`):** Multi-viewport Playwright journeys (`actions-taken-flow.spec.ts`, `ticket-resolution.spec.ts`, `dashboards.spec.ts`) executing across Desktop (1280x800), Tablet (768x1024), and Mobile (375x667).
 
 ---
 
-## 📋 REST API Specification (Sprint 3 Endpoints)
+## 📋 REST API Specification (Sprint 4 Endpoints)
 
 All endpoints enforce authenticated session identity with standard JSON envelopes and unique UUID `correlationId` tracking:
 
@@ -263,29 +267,34 @@ All endpoints enforce authenticated session identity with standard JSON envelope
 | **5** | `POST` | `/api/tickets` | `REQUESTER` | Create ticket bound to authenticated identity | `201`, `400`, `401`, `403` |
 | **6** | `GET` | `/api/tickets` | `REQUESTER` | Query owned tickets with search, filters, pagination | `200`, `401`, `403` |
 | **7** | `GET` | `/api/tickets/:id` | `REQUESTER` | View owned ticket detail (404 on unowned) | `200`, `401`, `404` |
-| **8** | `PATCH`| `/api/tickets/:id/resolve-indication`| `REQUESTER` | Toggle requester problem resolution indication | `200`, `401`, `404` |
+| **8** | `PATCH`| `/api/tickets/:id/resolve` | `REQUESTER` | Advisory requester problem resolution indication | `200`, `401`, `404` |
 | **9** | `POST` | `/api/tickets/:id/comments` | Any Authenticated | Post public discussion comment | `201`, `400`, `401`, `404` |
 | **10**| `GET` | `/api/tickets/:id/comments` | Any Authenticated | Retrieve public discussion comment thread | `200`, `401`, `404` |
 | **11**| `POST` | `/api/tickets/:id/notes` | `IT_STAFF`, `ADMIN` | Post confidential internal note (403 for Requester) | `201`, `400`, `401`, `403`, `404` |
-| **12**| `GET` | `/api/staff/tickets` | `IT_STAFF`, `ADMIN` | IT Staff queue with search, filter, sort, pagination | `200`, `401`, `403` |
-| **13**| `GET` | `/api/staff/tickets/:id` | `IT_STAFF`, `ADMIN` | Full operational ticket detail including internal notes | `200`, `401`, `403`, `404` |
-| **14**| `PATCH`| `/api/staff/tickets/:id/assignment` | `IT_STAFF`, `ADMIN` | Claim or reassign ticket ownership | `200`, `400`, `401`, `403`, `404` |
-| **15**| `PATCH`| `/api/staff/tickets/:id/priority` | `IT_STAFF`, `ADMIN` | Override operational IT Priority | `200`, `400`, `401`, `403`, `404` |
-| **16**| `PATCH`| `/api/staff/tickets/:id/status` | `IT_STAFF`, `ADMIN` | Execute governed ticket status transition | `200`, `400`, `401`, `403`, `404` |
-| **17**| `GET` | `/api/admin/users` | `ADMIN` | List all users with search and role filter | `200`, `401`, `403` |
-| **18**| `POST` | `/api/admin/users` | `ADMIN` | Create user with initial password and role | `201`, `400`, `401`, `403` |
-| **19**| `PATCH`| `/api/admin/users/:id` | `ADMIN` | Update user profile, role, or active status | `200`, `400`, `401`, `403`, `404` |
-| **20**| `POST` | `/api/admin/users/:id/reset-password` | `ADMIN` | Reset user password with mandatory change flag | `200`, `400`, `401`, `403`, `404` |
+| **12**| `GET` | `/api/tickets/:id/actions` | Authenticated | List all actions taken for ticket (unowned 404 for Requester)| `200`, `401`, `404` |
+| **13**| `POST` | `/api/tickets/:id/actions` | `IT_STAFF`, `ADMIN` | Record new action taken with session-bound performer | `201`, `400`, `401`, `403`, `404` |
+| **14**| `PATCH`| `/api/tickets/:id/actions/:actionId` | `IT_STAFF`, `ADMIN` | Update an existing action taken record | `200`, `400`, `401`, `403`, `404` |
+| **15**| `GET` | `/api/staff/tickets` | `IT_STAFF`, `ADMIN` | IT Staff queue with search, filter, sort, pagination | `200`, `401`, `403` |
+| **16**| `GET` | `/api/staff/tickets/:id` | `IT_STAFF`, `ADMIN` | Full operational ticket detail including internal notes | `200`, `401`, `403`, `404` |
+| **17**| `PATCH`| `/api/staff/tickets/:id/assignment` | `IT_STAFF`, `ADMIN` | Claim or reassign ticket ownership | `200`, `400`, `401`, `403`, `404` |
+| **18**| `PATCH`| `/api/staff/tickets/:id/priority` | `IT_STAFF`, `ADMIN` | Override operational IT Priority | `200`, `400`, `401`, `403`, `404` |
+| **19**| `PATCH`| `/api/staff/tickets/:id/status` | `IT_STAFF`, `ADMIN` | Execute status transition with `expectedUpdatedAt` OCC gate | `200`, `400`, `401`, `403`, `409` |
+| **20**| `GET` | `/api/dashboard/requester` | `REQUESTER`, `ADMIN` | Requester operational metrics & recent tickets | `200`, `401`, `403` |
+| **21**| `GET` | `/api/dashboard/staff` | `IT_STAFF`, `ADMIN` | IT Staff operational metrics, distributions & recent actions | `200`, `401`, `403` |
+| **22**| `GET` | `/api/dashboard/admin` | `ADMIN` | Staff metrics augmented with user account statistics | `200`, `401`, `403` |
+| **23**| `GET` | `/api/admin/users` | `ADMIN` | List all users with search and role filter | `200`, `401`, `403` |
+| **24**| `POST` | `/api/admin/users` | `ADMIN` | Create user with initial password and role | `201`, `400`, `401`, `403` |
+| **25**| `PATCH`| `/api/admin/users/:id` | `ADMIN` | Update user profile, role, or active status | `200`, `400`, `401`, `403`, `404` |
 
 ---
 
 ## 📚 Engineering Documentation
 
-Sprint 3 contract and verification documents are located in `docs/lab-03/`:
+Sprint 4 contract, test plans, and verification records are located in `docs/lab-04/`:
 
-- [System Specification](docs/lab-03/specification.md) — 11-section contract, 15 FRs, 25 BRs, 22 ACs, 17x4 RBAC matrix, and Definition of Done
-- [REST API Specification](docs/lab-03/api-spec.md) — Endpoint contracts, request/response schemas, and error envelopes
-- [UI Specification](docs/lab-03/ui-spec.md) — Zen Green design tokens, screen layouts, responsive breakpoints, and visual inspection checklist
-- [Test Plan & Results](docs/lab-03/tests.md) — 8-tier test plan, AC traceability matrix, and 100% pass verification outputs
-- [Peer Review Record](docs/lab-03/reviewer.md) — Systematic peer review records, comments received/given with `@kmood-Sakura`, and resolution notes
-- [AI Use & Reflection](docs/lab-03/ai-use.md) — Curated prompt logs and student engineering reflections
+- [System Specification](docs/lab-04/specification.md) — 11-section contract, 16 FRs, 25 BRs, 22 ACs, RBAC matrix, and Definition of Done
+- [REST API Specification](docs/lab-04/api-spec.md) — Endpoint contracts, request/response schemas, OCC parameters, and error envelopes
+- [UI Specification](docs/lab-04/ui-spec.md) — Zen Green design tokens, screen layouts, responsive breakpoints, and visual inspection checklist
+- [Test Plan & Results](docs/lab-04/tests.md) — 8-tier test plan, AC traceability matrix, and 100% pass verification outputs
+- [Peer Review Record](docs/lab-04/reviewer.md) — Systematic peer review records, comments received/given with `@kmood-Sakura`, and resolution notes
+- [AI Use & Reflection](docs/lab-04/ai-use.md) — Curated 10 key prompt logs and student engineering reflections
