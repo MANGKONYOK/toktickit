@@ -204,6 +204,7 @@
 | PR / Feature | Branch | Target Branch | Review Scope | Reviewer Verdict |
 | :--- | :--- | :--- | :--- | :---: |
 | Feature 1 | `lab4-feature/1-sprint-contract` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboards & 10-Tier Test Architecture | **APPROVED** |
+| Feature 2 | `lab4-feature/2-actions-foundation` | `lab4-staging` | Actions Taken Data Model, Additive Migration & Rollback, Idempotent Seed, 4 REST Routes, Pure Validation & Transition Modules, Administrator RBAC Widening | **Changes Requested** |
 
 ---
 
@@ -228,6 +229,48 @@
   | 6 | reviewer.md Section 1 table has empty rows; README header cites "cut from lab3-staging" | note |
 
   **Nothing blocks the merge. Approving PR.**
+  ```
+
+- **Partner's response & resolution:**
+
+  ```text
+  [To be recorded upon partner's resolution]
+  ```
+
+
+---
+
+#### Feature 2: Actions Taken Backend Foundation (`lab4-feature/2-actions-foundation`)
+
+- **Review comments provided to partner:**
+
+  ```text
+  Read `0b7cc6c` against `lab4-staging` — 23 files, +2251 −148. Outstanding backend craftsmanship throughout: the additive migration with tested down.sql, pure modules for lifecycle and validation, atomic updateMany version increment for optimistic concurrency, and the rollback proof baseline fix in 0b7cc6c.
+
+  One blocking contract discrepancy needs attention before merging:
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | Additive migration, down.sql, and idempotent seed with 9 actions | pass |
+  | 2 | Pure lifecycle (5 edges) and multi-field validation modules | pass |
+  | 3 | Optimistic locking on UPDATE via version and four 409 error bodies | pass |
+  | 4 | Administrator widening on staff ticket, attachment, comment and note routes | pass |
+  | 5 | Suite expansion: 284 tests across 25 files passing, clean types | pass |
+  | 6 | GET /api/staff/users does not return Administrators or role (A-01 / api-spec §5) | issue |
+
+  **Blocks the merge: #6.**
+
+  #### Issues
+
+  | # | issues | reason |
+  | - | ------ | ------ |
+  | 6 | `server/src/routes/staff.ts:40` still restricts `GET /api/staff/users` to `{ role: "IT_STAFF", isActive: true }` and projects only `{ id, fullName }` | `specification.md` Assumption A-01 and `api-spec.md` Section 5 explicitly state that `GET /api/staff/users` must return active IT Staff AND Administrators, each as `{ id, fullName, role }`. In Feature 3, the action performer select needs to list both roles, while the Ticket Owner select filters to `IT_STAFF`. Leaving this query restricted to IT Staff prevents Administrators from appearing in the performer select. |
+
+  #### Non-blocking Notes
+
+  - Precedence order of simultaneous refusals: As noted in your PR description, adding an automated test in Feature 4 verifying the exact check order (e.g., `TICKET_TERMINAL` before `STALE`) will close the loop.
   ```
 
 - **Partner's response & resolution:**
