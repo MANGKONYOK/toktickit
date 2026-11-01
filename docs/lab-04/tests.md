@@ -46,10 +46,10 @@ graph TD
 | `API-02` | API | FR-01, AC-07 | `POST /api/tickets/:id/actions` multiple actions by different IT Staff members. | Both actions persisted under parent ticket; returns HTTP 201. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | `API-03` | API | FR-04, AC-06 | `PATCH /api/tickets/:id/actions/:actionId` update action description and result. | Record updated in DB; `updatedAt` refreshed; returns HTTP 200. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | `API-04` | API | FR-05, AC-03 | `GET /api/tickets/:id/actions` for owned ticket by Requester. | Returns chronological list of actions; returns HTTP 200. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| `API-05` | API | FR-10, AC-13 | `GET /api/dashboard/requester` calculates accurate open, waiting, and resolved counts. | Metric counts strictly match database state for caller; returns HTTP 200. | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| `API-06` | API | FR-10, AC-15 | `GET /api/dashboard/requester` for user with zero tickets. | Returns 0 for all metrics and empty array `[]` for tickets; returns HTTP 200. | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| `API-07` | API | FR-12, AC-14 | `GET /api/dashboard/staff` calculates unassigned, assigned-to-me, and status metrics. | Operational counters match authoritative DB queries; returns HTTP 200. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| `API-08` | API | FR-14, AC-21 | `GET /api/dashboard/admin` includes staff metrics plus user account statistics. | Returns staff metrics + `userStats` (`totalUsers`, `activeUsers`, `inactiveUsers`); returns HTTP 200. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| `API-05` | API | FR-10, AC-13 | `GET /api/dashboard/requester` calculates accurate open, waiting, and resolved counts. | Metric counts strictly match database state for caller; returns HTTP 200. | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| `API-06` | API | FR-10, AC-15 | `GET /api/dashboard/requester` for user with zero tickets. | Returns 0 for all metrics and empty array `[]` for tickets; returns HTTP 200. | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| `API-07` | API | FR-12, AC-14 | `GET /api/dashboard/staff` calculates unassigned, assigned-to-me, and status metrics. | Operational counters match authoritative DB queries; returns HTTP 200. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| `API-08` | API | FR-14, AC-21 | `GET /api/dashboard/admin` includes staff metrics plus user account statistics. | Returns staff metrics + `userStats` (`totalUsers`, `activeUsers`, `inactiveUsers`); returns HTTP 200. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 
 ---
 
@@ -59,8 +59,8 @@ graph TD
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
 | `UI-01` | Component | FR-02, AC-19 | `ActionsTaken` component rendering action cards with performer, date, description, and follow-up. | Renders action cards, displays performer badge, and formats date cleanly. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | `UI-02` | Component | FR-05, AC-02 | `ActionsTaken` component in read-only mode for Requester. | Renders action timeline; hides `Record Action` and `Edit` buttons. | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
-| `UI-03` | Component | FR-11, AC-16 | `RequesterDashboard` component metric cards and drill-down links. | Cards render correct counts and contain hrefs with expected query params. | `client/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
-| `UI-04` | Component | FR-13, AC-17 | `StaffDashboard` component metric cards and urgent tickets list. | Renders unassigned, my tickets, status pills, and urgent attention table. | `client/tests/lab-04/StaffDashboard.test.tsx` | Planned |
+| `UI-03` | Component | FR-11, AC-16 | `RequesterDashboard` component metric cards and drill-down links. | Cards render correct counts and contain hrefs with expected query params. | `client/tests/lab-04/RequesterDashboard.test.tsx` | Pass |
+| `UI-04` | Component | FR-13, AC-17 | `StaffDashboard` component metric cards and urgent tickets list. | Renders unassigned, my tickets, status pills, and urgent attention table. | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
 
 ---
 
@@ -68,8 +68,8 @@ graph TD
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final |
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
-| `STYLE-01` | Style | FR-15, AC-19 | Dashboard metric cards adopt Zen Green tokens (`--zg-surface`, `--zg-border`, `--zg-primary`). | Verified computed styles utilize CSS variables; zero raw hardcoded colors. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| `STYLE-02` | Style | BR-04, AC-19 | Follow-up required badge adopts amber/orange token (`--zg-action-followup-bg`). | Follow-up badge displays distinct amber background and border. | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
+| `STYLE-01` | Style | FR-15, AC-19 | Dashboard metric cards adopt Zen Green tokens (`--zg-surface`, `--zg-border`, `--zg-primary`). | Verified computed styles utilize CSS variables; zero raw hardcoded colors. | `client/tests/lab-04/DashboardStyles.test.tsx` | Pass |
+| `STYLE-02` | Style | BR-04, AC-19 | Follow-up required badge adopts amber/orange token (`--zg-action-followup-bg`). | Follow-up badge displays distinct amber background and border. | `client/tests/lab-04/DashboardStyles.test.tsx` | Pass |
 
 ---
 
@@ -90,7 +90,7 @@ graph TD
 | `AUTH-01` | Security | FR-05, AC-02 | `POST /api/tickets/:id/actions` attempted by Requester role. | Denied with HTTP 403 Forbidden (`FORBIDDEN_ROLE`). | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | `AUTH-02` | Security | BR-07, AC-03 | `GET /api/tickets/:id/actions` for unowned ticket by Requester. | Denied with HTTP 404 Not Found (anti-enumeration defense). | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | `AUTH-03` | Security | BR-02, AC-01 | Client attempts to supply spoofed `performedById` in request body. | Body field ignored; record bound strictly to `req.user.id`. | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
-| `AUTH-04` | Security | FR-12, AC-14 | `GET /api/dashboard/staff` called by Requester role. | Denied with HTTP 403 Forbidden. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| `AUTH-04` | Security | FR-12, AC-14 | `GET /api/dashboard/staff` called by Requester role. | Denied with HTTP 403 Forbidden. | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 
 ---
 
@@ -133,13 +133,13 @@ graph TD
 | **AC-10** (Invalid State Transition Rejected 400) | `UNIT-03` | `server/tests/lab-04/workflow-engine.unit.test.ts` | Pass |
 | **AC-11** (Optimistic Concurrency Conflict 409) | `FLOW-03` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | **AC-12** (Terminal Ticket Locked 400) | `FLOW-04` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
-| **AC-13** (Requester Dashboard Calculated Metrics) | `API-05` | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| **AC-14** (Staff Dashboard Operational Metrics) | `API-07`, `AUTH-04` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| **AC-15** (Requester Empty Metrics & Recent Tickets) | `API-06` | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| **AC-16** (Requester Dashboard Drill-Down) | `UI-03`, `E2E-03` | `client/tests/lab-04/RequesterDashboard.test.tsx`, `e2e/lab-04/dashboards.spec.ts` | Planned |
-| **AC-17** (Staff Dashboard Unassigned Drill-Down) | `UI-04`, `E2E-03` | `client/tests/lab-04/StaffDashboard.test.tsx`, `e2e/lab-04/dashboards.spec.ts` | Planned |
-| **AC-18** (Staff Dashboard My Active Drill-Down) | `UI-04`, `E2E-03` | `client/tests/lab-04/StaffDashboard.test.tsx`, `e2e/lab-04/dashboards.spec.ts` | Planned |
+| **AC-13** (Requester Dashboard Calculated Metrics) | `API-05` | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| **AC-14** (Staff Dashboard Operational Metrics) | `API-07`, `AUTH-04` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| **AC-15** (Requester Empty Metrics & Recent Tickets) | `API-06` | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| **AC-16** (Requester Dashboard Drill-Down) | `UI-03`, `E2E-03` | `client/tests/lab-04/RequesterDashboard.test.tsx`, `e2e/lab-04/dashboards.spec.ts` | Pass |
+| **AC-17** (Staff Dashboard Unassigned Drill-Down) | `UI-04`, `E2E-03` | `client/tests/lab-04/StaffDashboard.test.tsx`, `e2e/lab-04/dashboards.spec.ts` | Pass |
+| **AC-18** (Staff Dashboard My Active Drill-Down) | `UI-04`, `E2E-03` | `client/tests/lab-04/StaffDashboard.test.tsx`, `e2e/lab-04/dashboards.spec.ts` | Pass |
 | **AC-19** (Desktop Responsive Timeline & Metrics) | `RESP-01`, `STYLE-01` | `e2e/lab-04/dashboards.spec.ts` | Planned |
 | **AC-20** (Tablet & Mobile Zero Horizontal Scroll) | `RESP-02`, `RESP-03` | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| **AC-21** (Admin Augmented Dashboard with Users) | `API-08` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| **AC-21** (Admin Augmented Dashboard with Users) | `API-08` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 | **AC-22** (Full Labs 1-3 Regression Passing) | `MIG-01`, `REG-01` | `server/tests/lab-04/regression-labs1-3.test.ts` | Planned |

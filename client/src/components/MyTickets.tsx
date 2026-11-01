@@ -13,11 +13,15 @@ import { useAuth } from "../context/AuthContext.js";
 interface MyTicketsProps {
   onNavigateToCreateTicket?: () => void;
   onSelectTicket?: (ticketId: number) => void;
+  initialStatus?: string;
+  initialSortBy?: string;
 }
 
 export default function MyTickets({
   onNavigateToCreateTicket,
   onSelectTicket,
+  initialStatus,
+  initialSortBy,
 }: MyTicketsProps) {
   const { currentRequester } = useRequester();
   const { user } = useAuth();
@@ -31,10 +35,10 @@ export default function MyTickets({
   const [search, setSearch] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [requestedPriority, setRequestedPriority] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState<string>(initialStatus || "");
 
   // Sort & Pagination states
-  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortBy, setSortBy] = useState<string>(initialSortBy || "createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState<number>(1);
   const [pagination, setPagination] = useState({

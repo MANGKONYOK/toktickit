@@ -1018,3 +1018,119 @@ export async function updateTicketAction(
 
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Lab 4 Role Dashboard Interfaces & API Functions (FR-10, FR-12, FR-14 / AC-13..15, AC-21)
+// ---------------------------------------------------------------------------
+
+export interface RequesterDashboardMetrics {
+  totalOpen: number;
+  waitingForRequester: number;
+  recentlyUpdated: number;
+  recentlyResolved: number;
+}
+
+export interface RequesterRecentTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  categoryName: string;
+  requestedPriority: Priority;
+  currentStatus: TicketStatus;
+  resolvedByRequester: boolean;
+  updatedAt: string;
+}
+
+export interface RequesterDashboardResponse {
+  metrics: RequesterDashboardMetrics;
+  recentTickets: RequesterRecentTicket[];
+}
+
+export interface StaffDashboardMetrics {
+  unassignedTickets: number;
+  myAssignedTickets: number;
+  waitingForRequester: number;
+  urgentTickets: number;
+  ticketsByStatus: Record<TicketStatus, number>;
+  ticketsByPriority: Record<Priority, number>;
+}
+
+export interface StaffRecentAction {
+  id: number;
+  ticketId: number;
+  ticketNumber: string;
+  actionDateTime: string;
+  description: string;
+  result: string;
+  followUpRequired: boolean;
+}
+
+export interface UrgentAttentionTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  itPriority: Priority;
+  currentStatus: TicketStatus;
+  ticketOwner: string;
+  createdAt: string;
+}
+
+export interface StaffDashboardResponse {
+  metrics: StaffDashboardMetrics;
+  recentActions: StaffRecentAction[];
+  urgentAttentionTickets: UrgentAttentionTicket[];
+}
+
+export interface AdminUserStats {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  byRole: Record<"REQUESTER" | "IT_STAFF" | "ADMIN", number>;
+}
+
+export interface AdminDashboardResponse {
+  staffDashboard: StaffDashboardResponse;
+  userStats: AdminUserStats;
+}
+
+export async function fetchRequesterDashboard(): Promise<RequesterDashboardResponse> {
+  const res = await fetch(`${API_URL}/api/dashboard/requester`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const err = new Error(errData.error?.message || `Failed to fetch requester dashboard (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = errData.error?.code;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function fetchStaffDashboard(): Promise<StaffDashboardResponse> {
+  const res = await fetch(`${API_URL}/api/dashboard/staff`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const err = new Error(errData.error?.message || `Failed to fetch staff dashboard (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = errData.error?.code;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function fetchAdminDashboard(): Promise<AdminDashboardResponse> {
+  const res = await fetch(`${API_URL}/api/dashboard/admin`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const err = new Error(errData.error?.message || `Failed to fetch admin dashboard (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).code = errData.error?.code;
+    throw err;
+  }
+  return res.json();
+}

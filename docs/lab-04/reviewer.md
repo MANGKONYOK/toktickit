@@ -14,7 +14,7 @@
 | #1 | `lab4-feature/1-spec-and-test-plan` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboard Metrics, and 8-Tier Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab4-feat/2-action-taken` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, UI Timeline, and Automated Tests | **Changes Addressed & Ready** |
 | #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | **Changes Addressed & Ready** |
-| #4 | `lab4-feature/4-dashboards` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | *Planned* |
+| #4 | `lab4-feature/4-dashboard` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | **Ready for Review** |
 | #5 | `lab4-feature/5-hardening-and-polish` | `lab4-staging` | Zero Horizontal Scroll Responsive Polish, WCAG 2.1 AA Accessibility, Visual Hierarchy, and Safe Error State Hardening | *Planned* |
 | #6 | `lab4-feature/6-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | *Planned* |
 
@@ -382,3 +382,27 @@
   ```text
   No blocking issues found. Feature 3 is complete, compliant with Sprint 4 specifications, and ready to merge into lab4-staging.
   ```
+
+---
+
+### PR #4: Role Dashboards & Operational Analytics (`lab4-feature/4-dashboard`)
+
+- **Author Implementation Notes:**
+  - **Backend Metrics Engine & REST APIs (FR-10, FR-12, FR-14, BR-15..25):**
+    - Implemented `getRequesterDashboardData`, `getStaffDashboardData`, and `getAdminUserStats` in `server/src/utils/dashboard-query.ts` using native PostgreSQL Prisma aggregates (`count`, `groupBy`), ensuring authoritative calculation without raw ticket fetching into client memory (`BR-15`).
+    - Handled zero/empty dictionary states (`BR-25`) by guaranteeing all 8 statuses and 4 priorities are populated with `0` values rather than `undefined`.
+    - Mounted `GET /api/dashboard/requester` (Requester & Admin), `GET /api/dashboard/staff` (IT Staff & Admin), and `GET /api/dashboard/admin` (Admin only) with strict RBAC (`AUTH-04` enforcing 403 Forbidden).
+    - Teardown isolation: All test tickets and actions created in dashboard test suites are cleanly removed in `afterAll` hooks to prevent skewing database counts across runs.
+  - **Frontend UI Dashboards & Navigation Integration (FR-11, FR-13, FR-14, AC-16..18, AC-21):**
+    - Created `RequesterDashboard.tsx` with 4 Zen Green metric cards (`Total Open`, `Waiting for Your Input` with amber alert styling when > 0, `Updated in Past 7 Days`, `Resolved & Closed`), top 5 recent requests table, quick "Create New Ticket" action, and friendly reassuring empty state.
+    - Created `StaffDashboard.tsx` with 4 operational cards (`Unassigned Tickets` with amber badge when > 0, `My Active Tickets`, `Awaiting Feedback`, `Urgent Attention` with red badge when > 0), status & priority distribution progress boxes, recent actions log with follow-up badges, and urgent triage queue.
+    - Admin augmentation: When `user.role === 'ADMIN'`, renders `admin-user-stats-section` displaying `totalUsers`, `activeUsers`, `inactiveUsers`, role breakdown, and direct "Manage Users" action.
+    - Integrated with `Navbar.tsx` and `App.tsx`, providing drill-down click routing to pre-filtered queues in `MyTickets.tsx` and `StaffTicketQueue.tsx`.
+  - **Zen Green Design System & Style Conformance (STYLE-01, STYLE-02 / AC-19):**
+    - Declared official Lab 4 Zen Green tokens in `:root` of `client/src/index.css` (`--zg-primary`, `--zg-surface`, `--zg-border`, `--zg-amber`, `--zg-action-followup-bg`, `--zg-action-followup-border`).
+    - Fixed hardcoded hex color `#ea580c` in `ActionsTakenSection.tsx` follow-up badge to adopt `var(--zg-amber, #d97706)`.
+    - Created automated style suite `DashboardStyles.test.tsx` verifying `:root` variable definitions, CSS class application, and zero hardcoded raw hex colors.
+  - **Automated Test Coverage:**
+    - 100% passing across 7 API tests (`API-05`, `API-06`, `API-07`, `API-08`, `AUTH-04`) and 20 client tests (`UI-03`, `UI-04`, `STYLE-01`, `STYLE-02`).
+    - Full regression passing: 261/261 server tests (26 files) and 106/106 client tests (20 files).
+

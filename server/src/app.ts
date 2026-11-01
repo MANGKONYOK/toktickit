@@ -30,6 +30,11 @@ import {
   validateActionTakenInput,
   isTerminalTicketStatus,
 } from "./utils/action-validation.js";
+import {
+  getRequesterDashboardData,
+  getStaffDashboardData,
+  getAdminUserStats,
+} from "./utils/dashboard-query.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -3027,6 +3032,91 @@ app.patch(
         error: {
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to update action taken",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Lab 4 Dashboard Endpoints (FR-10, FR-12, FR-14, BR-15..25 / AC-13..15, AC-21)
+// ---------------------------------------------------------------------------
+
+// GET /api/dashboard/requester — Summary metrics and recent tickets for Requester
+app.get(
+  "/api/dashboard/requester",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.REQUESTER, Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    try {
+      const prisma = getPrisma();
+      const data = await getRequesterDashboardData(prisma, req.user!.id);
+      res.status(200).json(data);
+    } catch (error) {
+      console.error(`[${correlationId}] GET /api/dashboard/requester failed:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to calculate requester dashboard metrics",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// GET /api/dashboard/staff — Operational metrics and triage queues for IT Staff & Admin
+app.get(
+  "/api/dashboard/staff",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    try {
+      const prisma = getPrisma();
+      const data = await getStaffDashboardData(prisma, req.user!.id);
+      res.status(200).json(data);
+    } catch (error) {
+      console.error(`[${correlationId}] GET /api/dashboard/staff failed:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to calculate staff dashboard metrics",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// GET /api/dashboard/admin — Staff operational data augmented with user management stats
+app.get(
+  "/api/dashboard/admin",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    try {
+      const prisma = getPrisma();
+      const [staffDashboard, userStats] = await Promise.all([
+        getStaffDashboardData(prisma, req.user!.id),
+        getAdminUserStats(prisma),
+      ]);
+      res.status(200).json({
+        staffDashboard,
+        userStats,
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] GET /api/dashboard/admin failed:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to calculate admin dashboard metrics",
           correlationId,
         },
       });
