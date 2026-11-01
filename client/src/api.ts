@@ -689,16 +689,22 @@ export async function updateTicketPriority(
 
 export async function transitionTicketStatus(
   ticketId: number,
-  status: TicketStatus
+  status: TicketStatus,
+  expectedUpdatedAt?: string
 ): Promise<{
-  ticket: { id: number; status: TicketStatus; currentStatus: TicketStatus };
+  ticket: { id: number; status: TicketStatus; currentStatus: TicketStatus; updatedAt?: string };
   message: string;
 }> {
+  const bodyPayload: Record<string, any> = { status };
+  if (expectedUpdatedAt) {
+    bodyPayload.expectedUpdatedAt = expectedUpdatedAt;
+  }
+
   const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(bodyPayload),
   });
 
   if (!res.ok) {
@@ -708,11 +714,14 @@ export async function transitionTicketStatus(
     );
     (err as any).status = res.status;
     (err as any).code = errorData.error?.code;
+    (err as any).details = errorData.error?.details;
     throw err;
   }
 
   return res.json();
 }
+
+export const resolveTicketAdvisory = indicateProblemResolved;
 
 export async function createInternalNote(
   ticketId: number,

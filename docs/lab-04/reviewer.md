@@ -13,7 +13,7 @@
 | :---: | :--- | :--- | :--- | :---: |
 | #1 | `lab4-feature/1-spec-and-test-plan` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboard Metrics, and 8-Tier Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab4-feat/2-action-taken` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, UI Timeline, and Automated Tests | **Changes Addressed & Ready** |
-| #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | *Planned* |
+| #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | **Ready for Review** |
 | #4 | `lab4-feature/4-dashboards` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | *Planned* |
 | #5 | `lab4-feature/5-hardening-and-polish` | `lab4-staging` | Zero Horizontal Scroll Responsive Polish, WCAG 2.1 AA Accessibility, Visual Hierarchy, and Safe Error State Hardening | *Planned* |
 | #6 | `lab4-feature/6-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | *Planned* |
@@ -134,16 +134,25 @@
 
 ### PR #3: Ticket Workflow & Concurrency Gate (`lab4-feature/3-workflow-resolution`)
 
+- **Author Implementation Notes:**
+  - **8-State Governed Lifecycle Machine (`UNIT-03`, `AC-10`):** Enforced pure transition validation in `isValidStatusTransition` across all 8 ticket states (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`), disallowing self-transitions and illegal skips (e.g., `NEW -> RESOLVED`, `OPEN -> CLOSED`).
+  - **Authoritative Resolution Gate (`FLOW-02`, `AC-09`):** Protected status transitions to `RESOLVED` via `PATCH /api/tickets/:id/status` (and alias `/api/staff/tickets/:id/status`), strictly limiting them to `IT_STAFF` and `ADMIN` roles. Requesters calling status update endpoints are rejected with HTTP 403 Forbidden.
+  - **Advisory Requester Resolution Seam (`FLOW-01`, `AC-08`):** Implemented `PATCH /api/tickets/:id/resolve` (and alias `/resolve-indication`), setting `resolvedByRequester = true` and logging an audit comment while preserving current ticket status (`OPEN` / `IN_PROGRESS`). Enforced anti-enumeration defense returning HTTP 404 for unowned tickets.
+  - **Optimistic Concurrency Control (`FLOW-03`, `AC-11`):** Status mutation routes accept `expectedUpdatedAt` and compare against `ticket.updatedAt`. Stale requests are rejected with HTTP 409 Conflict returning structured payload (`code: "CONCURRENCY_CONFLICT"`, `details: { currentUpdatedAt, currentStatus }`).
+  - **Terminal State Mutability Locks (`FLOW-04`, `AC-12`):** Locked `CLOSED` and `CANCELLED` tickets against status updates, actions taken creation, and problem resolution indications, returning HTTP 400 Bad Request (`TICKET_TERMINAL_LOCKED` / `INVALID_STATUS_TRANSITION`).
+  - **Frontend Concurrency UI & Conflict Banner:** Extended `api.transitionTicketStatus` to accept `expectedUpdatedAt` and propagate 409 conflict details. In `StaffTicketDetail.tsx`, rendered Zen Green warning banner (`data-testid="concurrency-conflict-banner"`) with "Reload Latest Ticket Data" CTA, dynamically updating available next statuses upon reload.
+  - **Automated Test Coverage:** Added 13 unit tests (`workflow-engine.unit.test.ts`), 12 API integration tests (`ticket-workflow.api.test.ts`), and 4 component tests (`WorkflowConcurrency.test.tsx`). 100% passing across 252 server tests and 86 client tests with complete teardown cleanup in `afterAll`.
+
 - **Peer Reviewer Comment (@kmood-Sakura):**
 
   ```text
-  [Pending PR #4 creation]
+  [Pending review]
   ```
 
 - **How I Responded:**
 
   ```text
-  [Pending PR #4 creation]
+  [Pending review]
   ```
 
 ---
