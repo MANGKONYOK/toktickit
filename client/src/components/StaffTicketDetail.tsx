@@ -3,6 +3,7 @@ import * as api from "../api.js";
 import type { StaffTicketDetail as StaffTicketDetailType, Priority, TicketStatus } from "../api.js";
 import { useAuth } from "../context/AuthContext.js";
 import AttachmentSection from "./AttachmentSection.js";
+import ActionsTakenSection from "./ActionsTakenSection.js";
 
 interface StaffTicketDetailProps {
   ticketId: number;
@@ -630,6 +631,37 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
           </div>
         </div>
       </div>
+
+      {/* Actions Taken Section */}
+      <ActionsTakenSection
+        ticketId={ticket.id}
+        actions={ticket.actionsTaken || []}
+        readOnly={false}
+        isTicketTerminal={ticket.status === "CLOSED" || ticket.status === "CANCELLED"}
+        currentUserName={user?.fullName || "IT Staff"}
+        onActionAdded={(newAction) => {
+          setTicket((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  actionsTaken: [...(prev.actionsTaken || []), newAction],
+                }
+              : prev
+          );
+        }}
+        onActionUpdated={(updatedAction) => {
+          setTicket((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  actionsTaken: (prev.actionsTaken || []).map((a) =>
+                    a.id === updatedAction.id ? updatedAction : a
+                  ),
+                }
+              : prev
+          );
+        }}
+      />
     </div>
   );
 }

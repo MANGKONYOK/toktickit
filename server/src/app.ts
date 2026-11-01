@@ -25,6 +25,10 @@ import {
   SESSION_SECRET,
 } from "./middleware/auth.js";
 import { validatePasswordComplexity } from "./utils/password-validator.js";
+import {
+  validateActionTakenInput,
+  isTerminalTicketStatus,
+} from "./utils/action-validation.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -401,6 +405,14 @@ app.get("/api/tickets/:id", requireAuth, requirePasswordChangeClear, async (req:
           category: { select: { id: true, name: true } },
           relatedSystem: { select: { id: true, name: true } },
           attachments: { orderBy: { uploadedAt: "asc" } },
+          actionsTaken: {
+            orderBy: [{ actionDateTime: "asc" }, { id: "asc" }],
+            include: {
+              performedBy: {
+                select: { id: true, fullName: true, role: true },
+              },
+            },
+          },
         },
       });
     } else {
@@ -414,6 +426,14 @@ app.get("/api/tickets/:id", requireAuth, requirePasswordChangeClear, async (req:
           category: { select: { id: true, name: true } },
           relatedSystem: { select: { id: true, name: true } },
           attachments: { orderBy: { uploadedAt: "asc" } },
+          actionsTaken: {
+            orderBy: [{ actionDateTime: "asc" }, { id: "asc" }],
+            include: {
+              performedBy: {
+                select: { id: true, fullName: true, role: true },
+              },
+            },
+          },
         },
       });
     }
@@ -473,6 +493,20 @@ app.get("/api/tickets/:id", requireAuth, requirePasswordChangeClear, async (req:
       relatedSystem: ticket.relatedSystem,
       attachments: activeAttachments,
       removedAttachments,
+      actionsTaken: (ticket.actionsTaken || []).map((a) => ({
+        id: a.id,
+        ticketId: a.ticketId,
+        actionDateTime: a.actionDateTime.toISOString(),
+        description: a.description,
+        result: a.result,
+        performedById: a.performedById,
+        performedBy: a.performedBy,
+        followUpRequired: a.followUpRequired,
+        followUpNote: a.followUpNote,
+        attachmentNotes: a.attachmentNotes,
+        createdAt: a.createdAt.toISOString(),
+        updatedAt: a.updatedAt.toISOString(),
+      })),
     });
   } catch (error) {
     console.error(`[${correlationId}] Failed to fetch ticket detail:`, error);
@@ -1471,6 +1505,25 @@ app.get(
             },
             orderBy: { createdAt: "asc" },
           },
+          actionsTaken: {
+            select: {
+              id: true,
+              ticketId: true,
+              actionDateTime: true,
+              description: true,
+              result: true,
+              performedById: true,
+              performedBy: {
+                select: { id: true, fullName: true, role: true, email: true },
+              },
+              followUpRequired: true,
+              followUpNote: true,
+              attachmentNotes: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: [{ actionDateTime: "asc" }, { id: "asc" }],
+          },
           internalNotes: {
             select: {
               id: true,
@@ -1536,6 +1589,20 @@ app.get(
             authorRole: c.author.role,
             content: c.content,
             createdAt: c.createdAt.toISOString(),
+          })),
+          actionsTaken: (ticket.actionsTaken || []).map((a) => ({
+            id: a.id,
+            ticketId: a.ticketId,
+            actionDateTime: a.actionDateTime.toISOString(),
+            description: a.description,
+            result: a.result,
+            performedById: a.performedById,
+            performedBy: a.performedBy,
+            followUpRequired: a.followUpRequired,
+            followUpNote: a.followUpNote,
+            attachmentNotes: a.attachmentNotes,
+            createdAt: a.createdAt.toISOString(),
+            updatedAt: a.updatedAt.toISOString(),
           })),
           internalNotes: ticket.internalNotes.map((n) => ({
             id: n.id,
@@ -2494,6 +2561,343 @@ app.post(
 // ---------------------------------------------------------------------------
 // Global Error Handling Middleware (Express error middleware for malformed JSON, Multer & unhandled exceptions)
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Lab 4 Actions Taken Endpoints (FR-01..06, BR-01..08, BR-12, BR-14 / AC-01..07)
+// ---------------------------------------------------------------------------
+
+// POST /api/tickets/:id/actions — Create a new Action Taken
+app.post(
+  "/api/tickets/:id/actions",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const ticketId = parseInt(req.params.id, 10);
+
+    if (isNaN(ticketId) || ticketId <= 0) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Ticket ID must be a positive integer",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const validation = validateActionTakenInput(req.body);
+    if (!validation.isValid || !validation.data) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Action Taken validation failed",
+          details: validation.errors,
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    try {
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        res.status(404).json({
+          error: {
+            code: "TICKET_NOT_FOUND",
+            message: `Ticket with ID ${ticketId} not found`,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      if (isTerminalTicketStatus(ticket.currentStatus)) {
+        res.status(400).json({
+          error: {
+            code: "TICKET_TERMINAL_LOCKED",
+            message: "Cannot add Actions Taken to a closed or cancelled ticket",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const action = await prisma.actionTaken.create({
+        data: {
+          ticketId,
+          performedById: req.user!.id,
+          actionDateTime: validation.data.actionDateTime,
+          description: validation.data.description,
+          result: validation.data.result,
+          followUpRequired: validation.data.followUpRequired,
+          followUpNote: validation.data.followUpNote,
+          attachmentNotes: validation.data.attachmentNotes,
+        },
+        include: {
+          performedBy: {
+            select: { id: true, fullName: true, email: true, role: true },
+          },
+        },
+      });
+
+      res.status(201).json({
+        action: {
+          id: action.id,
+          ticketId: action.ticketId,
+          actionDateTime: action.actionDateTime.toISOString(),
+          description: action.description,
+          result: action.result,
+          performedById: action.performedById,
+          performedBy: action.performedBy,
+          followUpRequired: action.followUpRequired,
+          followUpNote: action.followUpNote,
+          attachmentNotes: action.attachmentNotes,
+          createdAt: action.createdAt.toISOString(),
+          updatedAt: action.updatedAt.toISOString(),
+        },
+        message: "Action Taken recorded successfully.",
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to record action taken:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to record action taken",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// GET /api/tickets/:id/actions — List Actions Taken for a ticket
+app.get(
+  "/api/tickets/:id/actions",
+  requireAuth,
+  requirePasswordChangeClear,
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const ticketId = parseInt(req.params.id, 10);
+
+    if (isNaN(ticketId) || ticketId <= 0) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Ticket ID must be a positive integer",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    try {
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        res.status(404).json({
+          error: {
+            code: "TICKET_NOT_FOUND",
+            message: `Ticket with ID ${ticketId} not found`,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      // Requesters can only access actions on tickets they own (anti-enumeration defense: 404 for unowned)
+      if (req.user!.role === Role.REQUESTER && ticket.requesterId !== req.user!.id) {
+        res.status(404).json({
+          error: {
+            code: "TICKET_NOT_FOUND",
+            message: `Ticket with ID ${ticketId} not found`,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const actions = await prisma.actionTaken.findMany({
+        where: { ticketId },
+        orderBy: [{ actionDateTime: "asc" }, { id: "asc" }],
+        include: {
+          performedBy: {
+            select: { id: true, fullName: true, email: true, role: true },
+          },
+        },
+      });
+
+      res.status(200).json({
+        ticketId,
+        actions: actions.map((a) => ({
+          id: a.id,
+          ticketId: a.ticketId,
+          actionDateTime: a.actionDateTime.toISOString(),
+          description: a.description,
+          result: a.result,
+          performedById: a.performedById,
+          performedBy: a.performedBy,
+          followUpRequired: a.followUpRequired,
+          followUpNote: a.followUpNote,
+          attachmentNotes: a.attachmentNotes,
+          createdAt: a.createdAt.toISOString(),
+          updatedAt: a.updatedAt.toISOString(),
+        })),
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to fetch actions taken:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch actions taken",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
+// PATCH /api/tickets/:id/actions/:actionId — Update Action Taken
+app.patch(
+  "/api/tickets/:id/actions/:actionId",
+  requireAuth,
+  requirePasswordChangeClear,
+  requireRole(Role.IT_STAFF, Role.ADMIN),
+  async (req: Request, res: Response) => {
+    const correlationId = `req-${randomUUID()}`;
+    const ticketId = parseInt(req.params.id, 10);
+    const actionId = parseInt(req.params.actionId, 10);
+
+    if (isNaN(ticketId) || ticketId <= 0 || isNaN(actionId) || actionId <= 0) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Ticket ID and Action ID must be positive integers",
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    try {
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        res.status(404).json({
+          error: {
+            code: "TICKET_NOT_FOUND",
+            message: `Ticket with ID ${ticketId} not found`,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      if (isTerminalTicketStatus(ticket.currentStatus)) {
+        res.status(400).json({
+          error: {
+            code: "TICKET_TERMINAL_LOCKED",
+            message: "Cannot update Actions Taken on a closed or cancelled ticket",
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const existingAction = await prisma.actionTaken.findFirst({
+        where: { id: actionId, ticketId },
+      });
+
+      if (!existingAction) {
+        res.status(404).json({
+          error: {
+            code: "ACTION_NOT_FOUND",
+            message: `Action Taken with ID ${actionId} not found on ticket ${ticketId}`,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const mergedPayload = {
+        actionDateTime: req.body.actionDateTime !== undefined ? req.body.actionDateTime : existingAction.actionDateTime,
+        description: req.body.description !== undefined ? req.body.description : existingAction.description,
+        result: req.body.result !== undefined ? req.body.result : existingAction.result,
+        followUpRequired: req.body.followUpRequired !== undefined ? req.body.followUpRequired : existingAction.followUpRequired,
+        followUpNote: req.body.followUpNote !== undefined ? req.body.followUpNote : existingAction.followUpNote,
+        attachmentNotes: req.body.attachmentNotes !== undefined ? req.body.attachmentNotes : existingAction.attachmentNotes,
+      };
+
+      const validation = validateActionTakenInput(mergedPayload);
+      if (!validation.isValid || !validation.data) {
+        res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Action Taken update validation failed",
+            details: validation.errors,
+            correlationId,
+          },
+        });
+        return;
+      }
+
+      const updatedAction = await prisma.actionTaken.update({
+        where: { id: actionId },
+        data: {
+          actionDateTime: validation.data.actionDateTime,
+          description: validation.data.description,
+          result: validation.data.result,
+          followUpRequired: validation.data.followUpRequired,
+          followUpNote: validation.data.followUpNote,
+          attachmentNotes: validation.data.attachmentNotes,
+        },
+        include: {
+          performedBy: {
+            select: { id: true, fullName: true, email: true, role: true },
+          },
+        },
+      });
+
+      res.status(200).json({
+        action: {
+          id: updatedAction.id,
+          ticketId: updatedAction.ticketId,
+          actionDateTime: updatedAction.actionDateTime.toISOString(),
+          description: updatedAction.description,
+          result: updatedAction.result,
+          performedById: updatedAction.performedById,
+          performedBy: updatedAction.performedBy,
+          followUpRequired: updatedAction.followUpRequired,
+          followUpNote: updatedAction.followUpNote,
+          attachmentNotes: updatedAction.attachmentNotes,
+          createdAt: updatedAction.createdAt.toISOString(),
+          updatedAt: updatedAction.updatedAt.toISOString(),
+        },
+        message: "Action Taken updated successfully.",
+      });
+    } catch (error) {
+      console.error(`[${correlationId}] Failed to update action taken:`, error);
+      res.status(500).json({
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update action taken",
+          correlationId,
+        },
+      });
+    }
+  }
+);
+
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   const correlationId = `req-${randomUUID()}`;
 
