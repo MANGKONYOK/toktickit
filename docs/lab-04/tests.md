@@ -100,7 +100,7 @@ graph TD
 | :--- | :---: | :---: | :--- | :--- | :--- | :---: |
 | `FLOW-01` | Workflow | FR-07, AC-08 | Requester clicks "Problem Resolved" on active ticket. | `resolvedByRequester` set to `true`; comment logged; `currentStatus` stays `OPEN`. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | `FLOW-02` | Workflow | FR-07, AC-09 | IT Staff transitions ticket to `RESOLVED` status. | `currentStatus` transitions to `RESOLVED`; returns HTTP 200. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
-| `FLOW-03` | Concurrency | FR-08, AC-11 | Stale status transition submission with outdated `expectedUpdatedAt`. | Operation rejected with HTTP 409 Conflict and current ticket payload. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| `FLOW-03` | Concurrency | FR-08, AC-11 | Status transition concurrency gate (stale timestamp, omitted `expectedUpdatedAt`, or invalid date). | Operation rejected with HTTP 409 Conflict on stale timestamp; rejected with HTTP 400 Bad Request on missing/invalid timestamp. | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 | `FLOW-04` | Workflow | BR-12, AC-12 | Attempting to add Action Taken or update status on `CLOSED` ticket. | Rejected with HTTP 400 Bad Request (terminal state locked). | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 
 ---

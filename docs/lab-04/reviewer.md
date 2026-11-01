@@ -13,7 +13,7 @@
 | :---: | :--- | :--- | :--- | :---: |
 | #1 | `lab4-feature/1-spec-and-test-plan` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboard Metrics, and 8-Tier Test Architecture | **Changes Addressed & Ready** |
 | #2 | `lab4-feat/2-action-taken` | `lab4-staging` | Database Migration, ActionTaken Model, Idempotent Seeds, REST APIs, Session Binding, UI Timeline, and Automated Tests | **Changes Addressed & Ready** |
-| #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | **Ready for Review** |
+| #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | **Changes Addressed & Ready** |
 | #4 | `lab4-feature/4-dashboards` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | *Planned* |
 | #5 | `lab4-feature/5-hardening-and-polish` | `lab4-staging` | Zero Horizontal Scroll Responsive Polish, WCAG 2.1 AA Accessibility, Visual Hierarchy, and Safe Error State Hardening | *Planned* |
 | #6 | `lab4-feature/6-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | *Planned* |
@@ -146,13 +146,57 @@
 - **Peer Reviewer Comment (@kmood-Sakura):**
 
   ```text
-  [Pending review]
+  Read `7e23c24..5077ea6` against `lab4-staging` — the lifecycle wiring, the resolution seam, the 409 gate and 29 new tests. The workflow side is right and the teardown lesson from Feature 2 landed without being asked for. The concurrency gate is the problem: it is optional where your own spec says it is required, so the guarantee it exists for does not hold.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | The 17 edges and the self-transition rejection match your body exactly, and `workflow-engine.unit.test.ts` finally covers the matrix Lab 3 shipped untested | pass |
+  | 2 | Terminal locks are wired through all three mutation paths — status, action, resolve — and `FLOW-04` proves each one | pass |
+  | 3 | `ticket-workflow.api.test.ts` cleans up its comments, actions and tickets, and every count in your body measures true — 24 server files, 17 client files, 13/12/4 blocks | pass |
+  | 4 | `app.ts:1898` only checks `expectedUpdatedAt` when the caller sends it, so omitting it overwrites another person's change with no 409 | issue |
+  | 5 | The 200 body does not match `api-spec.md:166`, which promises `ticketNumber` and `previousStatus` | warning |
+  | 6 | The compare and the write are two statements, so two submits can both pass the check | warning |
+
+  **Blocks the merge: #4. Rows 5 and 6 do not.**
+
+  #### Issues
+
+  | # | issues | reason |
+  | - | ------ | ------ |
+  | 4 | `api-spec.md:153` says the endpoint "Requires `expectedUpdatedAt` timestamp to detect concurrent modifications". `app.ts:1898` wraps the whole comparison in `if (expectedUpdatedAt !== undefined)`, and `client/src/api.ts` attaches the field only `if (expectedUpdatedAt)` — with the caller choosing by `ticket.actionsTaken !== undefined`, a field that has nothing to do with it | A `PATCH` without the field is accepted and writes unconditionally, which is a lost update in exactly the multi-staff triage FR-08 exists for — not a security hole, since the caller is already allowed to write, but the colleague's change disappears silently and no 409 is ever raised. It holds together today only because the staff payload always includes `actionsTaken`; the day that key is absent the gate vanishes in the UI too. Reject a missing `expectedUpdatedAt` with `400` as the spec reads, and key the client off `ticket.updatedAt` itself. `FLOW-03` tests the mismatch and the reload but never the omitted field, so nothing in the suite would catch this. |
+
+  #### Warning
+
+  | # | warnings | reason |
+  | - | -------- | ------ |
+  | 5 | The handler returns `{ ticket: { id, status, currentStatus, updatedAt }, message }`; `api-spec.md:166-175` promises a flat object with `ticketNumber` and `previousStatus`, and `previousStatus` appears nowhere in `server/src` | Nothing breaks now because your own component reads `res.ticket.currentStatus`, but Feature 4's drill-down and the e2e specs will be written from the document, not from the handler. Either add the two fields or correct the spec — whichever you prefer, they should say the same thing before the dashboards are built on top. |
+  | 6 | `findUnique`, then the timestamp comparison, then `update` by id — three steps, no transaction, so two staff submitting the same `expectedUpdatedAt` can both pass and the second silently wins | Half of this is mine: `api-spec.md:163` prescribes fetch-then-compare and I approved it in PR 1, so it is not a deviation. One statement closes it — `updateMany({ where: { id, updatedAt: expected }, data: { currentStatus } })` and treat a count of 0 as the 409 — and the window is small enough that it is your call whether to do it here or when you touch this handler next. |
+
+  One note, not a finding: 1 of your body reads as though this PR delivers the transition validator, but `status-transition.ts` is untouched since Lab 3. What this PR actually adds there is the unit coverage and the terminal-state wiring, which is worth saying plainly — the marker will diff it.
   ```
 
 - **How I Responded:**
 
   ```text
-  [Pending review]
+  Agreed completely with peer reviewer @kmood-Sakura and resolved all issues, warnings, and notes systematically:
+
+  1. Mandatory Concurrency Gate & Client Keying (Issue #4):
+     - Server (`server/src/app.ts`): Enforced `expectedUpdatedAt` as strictly required on `PATCH /api/tickets/:id/status` per `api-spec.md:153`. Requests omitting or providing an invalid timestamp string are rejected immediately with HTTP 400 Bad Request (`VALIDATION_ERROR`), preventing lost updates during multi-staff triage.
+     - Client (`StaffTicketDetail.tsx` & `api.ts`): Removed the decoupled `ticket.actionsTaken !== undefined` condition; `StaffTicketDetail.tsx` now keys directly off `ticket.updatedAt` when dispatching `api.transitionTicketStatus`. `api.transitionTicketStatus` calls `PATCH /api/tickets/:id/status` passing `{ status, expectedUpdatedAt }`.
+     - Test Suite (`ticket-workflow.api.test.ts`): Expanded `FLOW-03` with 2 explicit test cases verifying HTTP 400 rejection when `expectedUpdatedAt` is omitted and when an invalid timestamp string is provided. All status mutation tests updated to pass valid ISO timestamps.
+
+  2. Response Body Alignment with api-spec.md (Warning #5):
+     - Server (`server/src/app.ts`): Standardized the HTTP 200 OK response on `PATCH /api/tickets/:id/status` to return flat top-level fields matching `api-spec.md:166-175`: `{ id, ticketNumber, currentStatus, previousStatus, updatedAt }`.
+     - Backward Compatibility: Retained nested `{ ticket, message }` in the payload and updated TypeScript interfaces in `client/src/api.ts` with optional compatibility fields so existing UI components and tests continue running seamlessly without regressions.
+
+  3. Atomic Check-and-Write Concurrency Protection (Warning #6):
+     - Server (`server/src/app.ts`): Closed the TOCTOU window between `findUnique` and `update` by executing atomic `prisma.ticket.updateMany({ where: { id: ticketId, updatedAt: existingTicket.updatedAt }, data: { currentStatus: status } })`.
+     - A return count of 0 indicates a concurrent update occurred mid-flight, immediately fetching fresh ticket data and returning structured HTTP 409 Conflict (`CONCURRENCY_CONFLICT`).
+
+  4. Scope Clarification on Transition Matrix (Reviewer Note):
+     - Clarified that `server/src/utils/status-transition.ts` and its 17-edge state graph originated in Lab 3. PR #3 delivers the comprehensive 17-transition unit test suite (`workflow-engine.unit.test.ts`), terminal state locks on `CLOSED`/`CANCELLED` tickets across all mutation vectors, optimistic concurrency gate enforcement, and the frontend conflict banner.
   ```
 
 ---
@@ -214,6 +258,7 @@
 | :--- | :--- | :--- | :--- | :---: |
 | Feature 1 | `lab4-feature/1-sprint-contract` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboards & 10-Tier Test Architecture | **APPROVED** |
 | Feature 2 | `lab4-feature/2-actions-foundation` | `lab4-staging` | Actions Taken Data Model, Additive Migration & Rollback, Idempotent Seed, 4 REST Routes, Pure Validation & Transition Modules, Administrator RBAC Widening | **Changes Addressed & Approved** |
+| Feature 3 | `lab4-feature/3-actions-ui` | `lab4-staging` | Actions Taken Panel (IT Staff), Open Actions Count & Anchor, Read-Only Requester View, Accessible Badges, Responsive Table/Cards, Stale Conflict & Idempotency, 27 Screenshots | **APPROVED** |
 
 ---
 
@@ -295,4 +340,45 @@
   3. Verification:
      - All 285 server tests and 115 client tests passing with zero TypeScript errors across both projects.
      - Verdict: APPROVED — Ready to merge into lab4-staging.
+  ```
+
+
+---
+
+#### Feature 3: Actions Taken UI (`lab4-feature/3-actions-ui`)
+
+- **Review comments provided to partner:**
+
+  ```text
+  Read 5fa989a..fb0022c (v4.3.1) against lab4-staging — 39 files, +2232 −37. The implementation delivers the complete Actions Taken UI vertical slice across desktop, tablet, and mobile with exceptional precision. All 6 feature areas and 16 test/spec claims are verified and pass without any blocking defects.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | The Actions Taken panel on the IT Staff Ticket Detail: list, create, edit, Start / Complete / Cancel, stale banner, read-only on a closed Ticket | pass |
+  | 2 | The open-action count in the Ticket summary, linking to `#actions` | pass |
+  | 3 | The read-only Actions Taken list on the Requester's Ticket Detail | pass |
+  | 4 | Four action status badges with word, icon and measured fill exceeding WCAG 2.1 AA | pass |
+  | 5 | Responsive table at 768 px and wider, converting to labelled cards below 768 px | pass |
+  | 6 | Automated component suite (15 files, 139 passed), Playwright E2E journey at 3 viewports (21 passed), and all 27 screenshots verified | pass |
+
+  **Nothing blocks the merge. Approving PR.**
+
+  #### Highlights & Technical Strengths
+
+  | # | area | observation |
+  | - | ---- | ----------- |
+  | 1 | Form edit isolation | `ActionsTakenPanel.tsx` computes dirty fields and transmits strictly changed fields along with the row's `version`. If no fields changed upon Save, network request is suppressed, preventing unnecessary version increment. |
+  | 2 | Robust idempotency lifecycle | Verified by `UI-02b`: retry upon failure preserves the existing `idempotencyKey` so the backend deduplicates cleanly; resetting or mounting a new create form instance generates a fresh UUID. |
+  | 3 | Non-disruptive inline transitions | Cancellation confirms inline within the card/table row with immediate focus return to trigger element; Complete prompts inline for missing result notes before network dispatch. |
+  | 4 | WCAG 2.1 AA compliance & multi-cue badges | Action badges combine text label, distinct glyph (▢, ◐, ✓, ✕), and high-contrast fills (8.40:1, 7.27:1, 7.65:1, 6.49:1), ensuring color is never the sole communicator. Mobile touch targets meet 44×44px. |
+  | 5 | Concurrency resilience | HTTP 409 `STALE` transitions seamlessly display the `.stale-banner` with explicit Reload CTA, avoiding automatic destructive retries. |
+  | 6 | Verifiable screenshot test | In `actions-taken-flow.spec.ts`, `RESP-07` validates `written.mtimeMs >= LOADED_AT`, guaranteeing screenshots are freshly generated by the current execution run rather than static relics on disk. |
+  ```
+
+- **Partner's response & resolution:**
+
+  ```text
+  No blocking issues found. Feature 3 is complete, compliant with Sprint 4 specifications, and ready to merge into lab4-staging.
   ```

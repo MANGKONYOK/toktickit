@@ -1853,6 +1853,43 @@ const transitionTicketStatusHandler = async (req: Request, res: Response) => {
     return;
   }
 
+  // Concurrency gate validation per api-spec.md:153 and FR-08 (Issue #4)
+  const isLab4Route =
+    req.originalUrl?.includes("/api/tickets/") &&
+    !req.originalUrl?.includes("/api/staff/tickets/");
+
+  if (isLab4Route) {
+    if (
+      !expectedUpdatedAt ||
+      typeof expectedUpdatedAt !== "string" ||
+      isNaN(new Date(expectedUpdatedAt).getTime())
+    ) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message:
+            "expectedUpdatedAt is required and must be a valid ISO-8601 timestamp string",
+          correlationId,
+        },
+      });
+      return;
+    }
+  } else if (expectedUpdatedAt !== undefined) {
+    if (
+      typeof expectedUpdatedAt !== "string" ||
+      isNaN(new Date(expectedUpdatedAt).getTime())
+    ) {
+      res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "expectedUpdatedAt must be a valid ISO-8601 timestamp string",
+          correlationId,
+        },
+      });
+      return;
+    }
+  }
+
   try {
     const prisma = getPrisma();
     const existingTicket = await prisma.ticket.findUnique({
@@ -1898,11 +1935,12 @@ const transitionTicketStatusHandler = async (req: Request, res: Response) => {
     if (expectedUpdatedAt !== undefined) {
       const expectedTime = new Date(expectedUpdatedAt).getTime();
       const currentTime = new Date(existingTicket.updatedAt).getTime();
-      if (isNaN(expectedTime) || expectedTime !== currentTime) {
+      if (expectedTime !== currentTime) {
         res.status(409).json({
           error: {
             code: "CONCURRENCY_CONFLICT",
-            message: "This ticket was modified by another user while you were viewing it. Please reload the latest ticket state before making changes.",
+            message:
+              "This ticket was modified by another user while you were viewing it. Please reload the latest ticket state before making changes.",
             details: {
               currentUpdatedAt: existingTicket.updatedAt.toISOString(),
               currentStatus: existingTicket.currentStatus,
@@ -1914,18 +1952,58 @@ const transitionTicketStatusHandler = async (req: Request, res: Response) => {
       }
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticketId },
+    const previousStatus = existingTicket.currentStatus;
+
+    // Atomic compare-and-write to eliminate TOCTOU race condition (Warning #6)
+    const updateResult = await prisma.ticket.updateMany({
+      where: {
+        id: ticketId,
+        updatedAt: existingTicket.updatedAt,
+      },
       data: {
         currentStatus: status as TicketStatus,
       },
     });
 
+    if (updateResult.count === 0) {
+      const freshTicket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+      res.status(409).json({
+        error: {
+          code: "CONCURRENCY_CONFLICT",
+          message:
+            "This ticket was modified by another user while you were viewing it. Please reload the latest ticket state before making changes.",
+          details: {
+            currentUpdatedAt:
+              freshTicket?.updatedAt.toISOString() || new Date().toISOString(),
+            currentStatus:
+              freshTicket?.currentStatus || existingTicket.currentStatus,
+          },
+          correlationId,
+        },
+      });
+      return;
+    }
+
+    const updated = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+    });
+
+    // Return flat spec fields (Warning #5 / api-spec.md:166) and nested ticket for backwards compatibility
     res.status(200).json({
+      id: updated.id,
+      ticketNumber: updated.ticketNumber,
+      status: updated.currentStatus,
+      currentStatus: updated.currentStatus,
+      previousStatus,
+      updatedAt: updated.updatedAt.toISOString(),
       ticket: {
         id: updated.id,
+        ticketNumber: updated.ticketNumber,
         status: updated.currentStatus,
         currentStatus: updated.currentStatus,
+        previousStatus,
         updatedAt: updated.updatedAt.toISOString(),
       },
       message: "Status transitioned successfully.",

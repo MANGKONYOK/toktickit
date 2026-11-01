@@ -692,7 +692,20 @@ export async function transitionTicketStatus(
   status: TicketStatus,
   expectedUpdatedAt?: string
 ): Promise<{
-  ticket: { id: number; status: TicketStatus; currentStatus: TicketStatus; updatedAt?: string };
+  id?: number;
+  ticketNumber?: string;
+  status?: TicketStatus;
+  currentStatus?: TicketStatus;
+  previousStatus?: TicketStatus;
+  updatedAt?: string;
+  ticket: {
+    id: number;
+    ticketNumber?: string;
+    status: TicketStatus;
+    currentStatus: TicketStatus;
+    previousStatus?: TicketStatus;
+    updatedAt?: string;
+  };
   message: string;
 }> {
   const bodyPayload: Record<string, any> = { status };
@@ -700,7 +713,7 @@ export async function transitionTicketStatus(
     bodyPayload.expectedUpdatedAt = expectedUpdatedAt;
   }
 
-  const res = await fetch(`${API_URL}/api/staff/tickets/${ticketId}/status`, {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

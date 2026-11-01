@@ -124,10 +124,11 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
     setError("");
     setConflictError(null);
     try {
-      const res =
-        ticket.actionsTaken !== undefined
-          ? await api.transitionTicketStatus(ticket.id, targetStatus, ticket.updatedAt)
-          : await api.transitionTicketStatus(ticket.id, targetStatus);
+      const res = await api.transitionTicketStatus(
+        ticket.id,
+        targetStatus,
+        ticket.updatedAt
+      );
       setTicket((prev) =>
         prev
           ? {

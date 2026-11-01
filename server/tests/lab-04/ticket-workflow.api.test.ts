@@ -195,14 +195,24 @@ describe("Ticket Workflow, Resolution Gate & Concurrency API (FLOW-01..04 / FR-0
 
   describe("FLOW-02: Authoritative IT Staff Resolution Gate (FR-07 / BR-09 / AC-09)", () => {
     it("allows IT Staff to formally transition status to RESOLVED via /api/tickets/:id/status", async () => {
+      const ticketBefore = await prisma.ticket.findUnique({ where: { id: openTicketId } });
       const res = await request(app)
         .patch(`/api/tickets/${openTicketId}/status`)
         .set("Authorization", `Bearer ${staffTokenA}`)
-        .send({ status: "RESOLVED" });
+        .send({
+          status: "RESOLVED",
+          expectedUpdatedAt: ticketBefore?.updatedAt.toISOString(),
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.ticket.status).toBe("RESOLVED");
       expect(res.body.ticket.currentStatus).toBe("RESOLVED");
+      // Check spec flat fields per api-spec.md:166-175 (Warning #5)
+      expect(res.body.id).toBe(openTicketId);
+      expect(res.body.ticketNumber).toBeDefined();
+      expect(res.body.currentStatus).toBe("RESOLVED");
+      expect(res.body.previousStatus).toBe("OPEN");
+      expect(res.body.updatedAt).toBeDefined();
 
       const dbTicket = await prisma.ticket.findUnique({ where: { id: openTicketId } });
       expect(dbTicket?.currentStatus).toBe("RESOLVED");
@@ -212,24 +222,51 @@ describe("Ticket Workflow, Resolution Gate & Concurrency API (FLOW-01..04 / FR-0
       const res = await request(app)
         .patch(`/api/tickets/${inProgressTicketId}/status`)
         .set("Authorization", `Bearer ${requesterTokenA}`)
-        .send({ status: "RESOLVED" });
+        .send({ status: "RESOLVED", expectedUpdatedAt: new Date().toISOString() });
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe("FORBIDDEN");
     });
 
     it("allows Administrator to transition status to WAITING_FOR_REQUESTER", async () => {
+      const ticketBefore = await prisma.ticket.findUnique({ where: { id: inProgressTicketId } });
       const res = await request(app)
         .patch(`/api/tickets/${inProgressTicketId}/status`)
         .set("Authorization", `Bearer ${adminToken}`)
-        .send({ status: "WAITING_FOR_REQUESTER" });
+        .send({
+          status: "WAITING_FOR_REQUESTER",
+          expectedUpdatedAt: ticketBefore?.updatedAt.toISOString(),
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.ticket.currentStatus).toBe("WAITING_FOR_REQUESTER");
+      expect(res.body.previousStatus).toBe("IN_PROGRESS");
     });
   });
 
   describe("FLOW-03: Optimistic Concurrency Control (FR-08 / BR-13 / AC-11)", () => {
+    it("rejects status transition with HTTP 400 VALIDATION_ERROR when expectedUpdatedAt is omitted", async () => {
+      const res = await request(app)
+        .patch(`/api/tickets/${inProgressTicketId}/status`)
+        .set("Authorization", `Bearer ${staffTokenA}`)
+        .send({ status: "RESOLVED" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error.message).toContain("expectedUpdatedAt is required");
+    });
+
+    it("rejects status transition with HTTP 400 VALIDATION_ERROR when expectedUpdatedAt is an invalid timestamp string", async () => {
+      const res = await request(app)
+        .patch(`/api/tickets/${inProgressTicketId}/status`)
+        .set("Authorization", `Bearer ${staffTokenA}`)
+        .send({ status: "RESOLVED", expectedUpdatedAt: "not-a-valid-date" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error.message).toContain("valid ISO-8601 timestamp string");
+    });
+
     it("returns HTTP 409 CONCURRENCY_CONFLICT when expectedUpdatedAt does not match database updatedAt", async () => {
       // 1. Fetch current ticket state
       const ticketBefore = await prisma.ticket.findUnique({ where: { id: inProgressTicketId } });
@@ -294,10 +331,14 @@ describe("Ticket Workflow, Resolution Gate & Concurrency API (FLOW-01..04 / FR-0
     });
 
     it("rejects status transition on CLOSED ticket with HTTP 400", async () => {
+      const ticketBefore = await prisma.ticket.findUnique({ where: { id: closedTicketId } });
       const res = await request(app)
         .patch(`/api/tickets/${closedTicketId}/status`)
         .set("Authorization", `Bearer ${staffTokenA}`)
-        .send({ status: "OPEN" });
+        .send({
+          status: "OPEN",
+          expectedUpdatedAt: ticketBefore?.updatedAt.toISOString() || new Date().toISOString(),
+        });
 
       expect(res.status).toBe(400);
       expect(["INVALID_STATUS_TRANSITION", "TICKET_TERMINAL_LOCKED"]).toContain(res.body.error.code);
@@ -329,10 +370,14 @@ describe("Ticket Workflow, Resolution Gate & Concurrency API (FLOW-01..04 / FR-0
     });
 
     it("rejects status transition on CANCELLED ticket with HTTP 400", async () => {
+      const ticketBefore = await prisma.ticket.findUnique({ where: { id: cancelledTicketId } });
       const res = await request(app)
         .patch(`/api/tickets/${cancelledTicketId}/status`)
         .set("Authorization", `Bearer ${staffTokenA}`)
-        .send({ status: "OPEN" });
+        .send({
+          status: "OPEN",
+          expectedUpdatedAt: ticketBefore?.updatedAt.toISOString() || new Date().toISOString(),
+        });
 
       expect(res.status).toBe(400);
       expect(["INVALID_STATUS_TRANSITION", "TICKET_TERMINAL_LOCKED"]).toContain(res.body.error.code);
