@@ -3,7 +3,6 @@ import * as api from "../api.js";
 import type { StaffTicketDetail as StaffTicketDetailType, Priority, TicketStatus } from "../api.js";
 import { useAuth } from "../context/AuthContext.js";
 import AttachmentSection from "./AttachmentSection.js";
-import ActionsTakenSection from "./ActionsTakenSection.js";
 
 interface StaffTicketDetailProps {
   ticketId: number;
@@ -35,13 +34,6 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [isUpdatingAssignee, setIsUpdatingAssignee] = useState(false);
 
-  // Concurrency conflict state (FR-08 / AC-11)
-  const [conflictError, setConflictError] = useState<{
-    message: string;
-    currentUpdatedAt?: string;
-    currentStatus?: string;
-  } | null>(null);
-
   // Public comments state
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -54,7 +46,6 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
 
   const loadTicket = useCallback(async () => {
     setError("");
-    setConflictError(null);
     try {
       const data = await api.fetchStaffTicketDetail(ticketId);
       setTicket(data.ticket);
@@ -122,20 +113,14 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
     if (!ticket || !targetStatus) return;
     setIsUpdatingStatus(true);
     setError("");
-    setConflictError(null);
     try {
-      const res = await api.transitionTicketStatus(
-        ticket.id,
-        targetStatus,
-        ticket.updatedAt
-      );
+      const res = await api.transitionTicketStatus(ticket.id, targetStatus);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               currentStatus: res.ticket.currentStatus,
               status: res.ticket.status,
-              updatedAt: res.ticket.updatedAt || prev.updatedAt,
             }
           : null
       );
@@ -143,15 +128,7 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
       setTargetStatus(nextAllowed.length > 0 ? nextAllowed[0] : "");
       showSuccessNotice(`Status transitioned to ${res.ticket.status}.`);
     } catch (err: any) {
-      if (err.status === 409 || err.code === "CONCURRENCY_CONFLICT") {
-        setConflictError({
-          message: err.message || "This ticket was modified by another user while you were viewing it. Please reload the latest ticket state before making changes.",
-          currentUpdatedAt: err.details?.currentUpdatedAt,
-          currentStatus: err.details?.currentStatus,
-        });
-      } else {
-        setError(err.message || "Failed to transition status.");
-      }
+      setError(err.message || "Failed to transition status.");
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -302,41 +279,6 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
       {error && (
         <div className="alert alert-danger d-flex align-items-center mb-3 py-2 px-3" role="alert">
           <span className="me-2">⚠️</span> {error}
-        </div>
-      )}
-
-      {/* Concurrency Conflict Banner (FR-08 / AC-11) */}
-      {conflictError && (
-        <div
-          className="alert alert-warning border border-warning d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 p-3 shadow-sm rounded-3"
-          role="alert"
-          data-testid="concurrency-conflict-banner"
-          style={{ backgroundColor: "rgba(234, 179, 8, 0.12)", borderColor: "var(--zg-amber, #eab308)" }}
-        >
-          <div className="d-flex align-items-start gap-2">
-            <span className="fs-5" role="img" aria-label="warning">⚠️</span>
-            <div>
-              <div className="fw-bold text-dark mb-1">
-                Concurrency Conflict: Ticket State Modified
-              </div>
-              <div className="small text-secondary">
-                {conflictError.message}
-                {conflictError.currentStatus && (
-                  <span className="ms-1">
-                    Latest status on server is <strong>{conflictError.currentStatus}</strong>.
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-warning btn-sm text-dark fw-bold px-3 py-2 text-nowrap"
-            onClick={loadTicket}
-            data-testid="reload-ticket-btn"
-          >
-            Reload Latest Ticket Data
-          </button>
         </div>
       )}
 
@@ -688,37 +630,6 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
           </div>
         </div>
       </div>
-
-      {/* Actions Taken Section */}
-      <ActionsTakenSection
-        ticketId={ticket.id}
-        actions={ticket.actionsTaken || []}
-        readOnly={false}
-        isTicketTerminal={ticket.status === "CLOSED" || ticket.status === "CANCELLED"}
-        currentUserName={user?.fullName || "IT Staff"}
-        onActionAdded={(newAction) => {
-          setTicket((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  actionsTaken: [...(prev.actionsTaken || []), newAction],
-                }
-              : prev
-          );
-        }}
-        onActionUpdated={(updatedAction) => {
-          setTicket((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  actionsTaken: (prev.actionsTaken || []).map((a) =>
-                    a.id === updatedAction.id ? updatedAction : a
-                  ),
-                }
-              : prev
-          );
-        }}
-      />
     </div>
   );
 }

@@ -176,7 +176,7 @@ describe("Staff Ticket Detail Component (UI-06 / AC-15..19)", () => {
     fireEvent.click(screen.getByTestId("apply-status-btn"));
 
     await waitFor(() => {
-      expect(api.transitionTicketStatus).toHaveBeenCalledWith(101, "OPEN", "2026-09-15T10:30:00.000Z");
+      expect(api.transitionTicketStatus).toHaveBeenCalledWith(101, "OPEN");
     });
   });
 
