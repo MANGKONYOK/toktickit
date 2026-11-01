@@ -204,7 +204,7 @@
 | PR / Feature | Branch | Target Branch | Review Scope | Reviewer Verdict |
 | :--- | :--- | :--- | :--- | :---: |
 | Feature 1 | `lab4-feature/1-sprint-contract` | `lab4-staging` | Sprint 4 Engineering Contract, Actions Taken Schema, Concurrency Gate, Dashboards & 10-Tier Test Architecture | **APPROVED** |
-| Feature 2 | `lab4-feature/2-actions-foundation` | `lab4-staging` | Actions Taken Data Model, Additive Migration & Rollback, Idempotent Seed, 4 REST Routes, Pure Validation & Transition Modules, Administrator RBAC Widening | **Changes Requested** |
+| Feature 2 | `lab4-feature/2-actions-foundation` | `lab4-staging` | Actions Taken Data Model, Additive Migration & Rollback, Idempotent Seed, 4 REST Routes, Pure Validation & Transition Modules, Administrator RBAC Widening | **Changes Addressed & Approved** |
 
 ---
 
@@ -234,7 +234,7 @@
 - **Partner's response & resolution:**
 
   ```text
-  [To be recorded upon partner's resolution]
+  No blocking issues raised. Acknowledged notes regarding reviewer identity table rows in reviewer.md and README branch wording. Merged into lab4-staging via PR #34 (commit 88b4880).
   ```
 
 
@@ -276,5 +276,14 @@
 - **Partner's response & resolution:**
 
   ```text
-  [To be recorded upon partner's resolution]
+  Resolved both items in commit 5041e40 (v4.2.2):
+  1. GET /api/staff/users Widening (Issue #6):
+     - Updated server/src/routes/staff.ts:132 to query active IT_STAFF and ADMIN users, selecting { id, fullName, role }, ordered by fullName then id.
+     - In client/src/api.ts, exported fetchStaffUsers() returning all active staff with their roles (for Feature 3 Performer selection), and updated fetchAssignableOwners() to filter to role === "IT_STAFF" so existing Ticket Owner dropdowns never offer Administrators.
+     - Added/updated API-83 (server) verifying active staff list and UI-29b (client) verifying Administrator exclusion from owner dropdowns.
+  2. Check-Order Precedence Verification:
+     - Added test API-17b in server/tests/lab-04/actions-taken.api.test.ts verifying api-spec 1.2 check order: 400 before TICKET_TERMINAL, TICKET_TERMINAL before STALE and ACTION_TRANSITION, and STALE before ACTION_TRANSITION.
+  3. Verification:
+     - All 285 server tests and 115 client tests passing with zero TypeScript errors across both projects.
+     - Verdict: APPROVED — Ready to merge into lab4-staging.
   ```
