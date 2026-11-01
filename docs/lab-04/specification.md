@@ -256,7 +256,7 @@ The seed script (`server/prisma/seed.ts`) must provision realistic scenarios:
 
 ## 10. Definition of Done (DoD) for Sprint 4
 
-> Note: All checkboxes are initialized to unchecked (`[ ]`) to document the pre-implementation baseline of Feature 1.
+> Note: 9 of 10 Definition of Done items are verified and signed off. Final integration item is checked upon merge into main.
 
 - [x] **Contract & Specification:** Complete `specification.md`, `api-spec.md`, `ui-spec.md`, and `tests.md` authored, reviewed, and merged into `lab4-staging`.
 - [x] **Database & Migrations:** Prisma schema evolved with `ActionTaken` model, non-destructive migration executed, and idempotent seeds provisioned.
