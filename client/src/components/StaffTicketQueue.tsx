@@ -11,9 +11,17 @@ import { useAuth } from "../context/AuthContext.js";
 
 interface StaffTicketQueueProps {
   onSelectTicket?: (ticketId: number) => void;
+  initialAssigned?: "all" | "unassigned" | "me";
+  initialStatus?: string;
+  initialPriority?: string;
 }
 
-export default function StaffTicketQueue({ onSelectTicket }: StaffTicketQueueProps) {
+export default function StaffTicketQueue({
+  onSelectTicket,
+  initialAssigned,
+  initialStatus,
+  initialPriority,
+}: StaffTicketQueueProps) {
   const { user } = useAuth();
 
   const [tickets, setTickets] = useState<StaffTicketItem[]>([]);
@@ -24,9 +32,9 @@ export default function StaffTicketQueue({ onSelectTicket }: StaffTicketQueuePro
   // Search & filter states
   const [search, setSearch] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [priority, setPriority] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
-  const [assigned, setAssigned] = useState<"all" | "unassigned" | "me">("all");
+  const [priority, setPriority] = useState<string>(initialPriority || "");
+  const [status, setStatus] = useState<string>(initialStatus || "");
+  const [assigned, setAssigned] = useState<"all" | "unassigned" | "me">(initialAssigned || "all");
 
   // Sorting & pagination states
   const [sortBy, setSortBy] = useState<string>("createdAt");

@@ -13,6 +13,8 @@ import ChangePasswordModal from "./components/ChangePasswordModal.js";
 import StaffTicketQueue from "./components/StaffTicketQueue.js";
 import StaffTicketDetail from "./components/StaffTicketDetail.js";
 import UserManagement from "./components/UserManagement.js";
+import RequesterDashboard from "./components/RequesterDashboard.js";
+import StaffDashboard from "./components/StaffDashboard.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -22,6 +24,15 @@ function MainContent() {
   const [activeTab, setActiveTab] = useState<NavTab>("my-tickets");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [staffQueueFilter, setStaffQueueFilter] = useState<{
+    assigned?: "all" | "unassigned" | "me";
+    status?: string;
+    priority?: string;
+  } | undefined>(undefined);
+  const [requesterFilter, setRequesterFilter] = useState<{
+    status?: string;
+    sortBy?: string;
+  } | undefined>(undefined);
 
   // Preserved Lab 1 capability for system status check and regression test suite
   const [state, setState] = useState<UiState>("idle");
@@ -50,6 +61,8 @@ function MainContent() {
         activeTab={activeTab}
         onSelectTab={(tab) => {
           setSelectedTicketId(null);
+          setStaffQueueFilter(undefined);
+          setRequesterFilter(undefined);
           setActiveTab(tab);
         }}
         onOpenLogin={() => setShowLoginModal(true)}
@@ -106,12 +119,47 @@ function MainContent() {
           </div>
         )}
 
+        {/* Requester Dashboard */}
+        {activeTab === "dashboard" && (
+          <RequesterDashboard
+            onNavigateToMyTickets={(filter) => {
+              setRequesterFilter(filter);
+              setActiveTab("my-tickets");
+            }}
+            onNavigateToCreateTicket={() => setActiveTab("create-ticket")}
+            onSelectTicket={(ticketId) => {
+              setSelectedTicketId(ticketId);
+              setActiveTab("my-tickets");
+            }}
+          />
+        )}
+
+        {/* Staff Dashboard */}
+        {activeTab === "staff-dashboard" && (
+          <StaffDashboard
+            onNavigateToQueue={(filter) => {
+              setStaffQueueFilter(filter);
+              setActiveTab("staff-queue");
+            }}
+            onSelectTicket={(ticketId) => {
+              setSelectedTicketId(ticketId);
+              setActiveTab("staff-queue");
+            }}
+            onNavigateToUsers={() => setActiveTab("admin-users")}
+          />
+        )}
+
         {/* Staff Queue */}
         {activeTab === "staff-queue" &&
           (selectedTicketId !== null ? (
             <StaffTicketDetail ticketId={selectedTicketId} onBack={() => setSelectedTicketId(null)} />
           ) : (
-            <StaffTicketQueue onSelectTicket={(id) => setSelectedTicketId(id)} />
+            <StaffTicketQueue
+              onSelectTicket={(id) => setSelectedTicketId(id)}
+              initialAssigned={staffQueueFilter?.assigned}
+              initialStatus={staffQueueFilter?.status}
+              initialPriority={staffQueueFilter?.priority}
+            />
           ))}
 
         {/* Admin User Management */}
@@ -129,6 +177,8 @@ function MainContent() {
             <MyTickets
               onNavigateToCreateTicket={() => setActiveTab("create-ticket")}
               onSelectTicket={(ticketId) => setSelectedTicketId(ticketId)}
+              initialStatus={requesterFilter?.status}
+              initialSortBy={requesterFilter?.sortBy}
             />
           ))}
 
