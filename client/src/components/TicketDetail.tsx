@@ -4,7 +4,6 @@ import type { TicketDetailResponse, CommentItem } from "../api.js";
 import { useRequester } from "../context/RequesterContext.js";
 import { useAuth } from "../context/AuthContext.js";
 import AttachmentSection from "./AttachmentSection.js";
-import ActionsTakenSection from "./ActionsTakenSection.js";
 
 interface TicketDetailProps {
   ticketId: number;
@@ -405,14 +404,6 @@ export default function TicketDetail({ ticketId, onBack }: TicketDetailProps) {
           </form>
         </div>
       </div>
-
-      {/* Actions Taken Timeline (Read-Only for Requester) */}
-      <ActionsTakenSection
-        ticketId={ticket.id}
-        actions={ticket.actionsTaken || []}
-        readOnly={true}
-        isTicketTerminal={ticket.currentStatus === "CLOSED" || ticket.currentStatus === "CANCELLED"}
-      />
     </div>
   );
 }

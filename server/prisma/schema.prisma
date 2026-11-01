@@ -52,7 +52,6 @@ model User {
   removedAttachments  Attachment[]  @relation("AttachmentRemover")
   comments            Comment[]
   internalNotes       InternalNote[]
-  actionsTaken        ActionTaken[]  @relation("UserActionsTaken")
 
   @@index([role, isActive])
   @@index([email])
@@ -115,7 +114,6 @@ model Ticket {
   attachments   Attachment[]
   comments      Comment[]
   internalNotes InternalNote[]
-  actionsTaken  ActionTaken[]
 
   @@index([requesterId])
   @@index([createdAt(sort: Desc)])
@@ -169,24 +167,4 @@ model InternalNote {
   author    User     @relation(fields: [authorId], references: [id])
 
   @@index([ticketId, createdAt(sort: Asc)])
-}
-
-
-model ActionTaken {
-  id               Int       @id @default(autoincrement())
-  ticketId         Int
-  ticket           Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  actionDateTime   DateTime  @default(now())
-  description      String    @db.Text
-  result           String    @db.Text
-  performedById    Int
-  performedBy      User      @relation("UserActionsTaken", fields: [performedById], references: [id])
-  followUpRequired Boolean   @default(false)
-  followUpNote     String?   @db.Text
-  attachmentNotes  String?   @db.Text
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  @@index([ticketId, actionDateTime(sort: Asc)])
-  @@index([performedById])
 }
