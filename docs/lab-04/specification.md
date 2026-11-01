@@ -258,15 +258,15 @@ The seed script (`server/prisma/seed.ts`) must provision realistic scenarios:
 
 > Note: All checkboxes are initialized to unchecked (`[ ]`) to document the pre-implementation baseline of Feature 1.
 
-- [ ] **Contract & Specification:** Complete `specification.md`, `api-spec.md`, `ui-spec.md`, and `tests.md` authored, reviewed, and merged into `lab4-staging`.
-- [ ] **Database & Migrations:** Prisma schema evolved with `ActionTaken` model, non-destructive migration executed, and idempotent seeds provisioned.
-- [ ] **Actions Taken Backend:** REST endpoints (`POST`, `GET`, `PATCH /api/tickets/:id/actions`) implemented with session-bound actor, field validation, and RBAC.
-- [ ] **Actions Taken Frontend:** Interactive timeline/table, Create modal with dynamic follow-up toggle, Edit modal, and Requester read-only view.
-- [ ] **Workflow & Concurrency Gate:** Authoritative resolution gate enforced; optimistic concurrency conflict detection returning HTTP 409 implemented and tested.
-- [ ] **Role Dashboards:** Requester, Staff, and Admin dashboard endpoints and Zen Green UI components implemented with interactive drill-down routing.
-- [ ] **Automated Test Suites:** Unit, API integration, UI component, responsive, authorization, workflow, regression, and Playwright E2E suites passing.
-- [ ] **Peer Review Record:** Substantive peer review comments and author responses documented in `reviewer.md` for PR #1 through PR #7.
-- [ ] **Visual Evidence:** High-resolution screenshots captured across Desktop, Tablet, and Mobile viewports in `artifacts/lab-04/screenshots/`.
+- [x] **Contract & Specification:** Complete `specification.md`, `api-spec.md`, `ui-spec.md`, and `tests.md` authored, reviewed, and merged into `lab4-staging`.
+- [x] **Database & Migrations:** Prisma schema evolved with `ActionTaken` model, non-destructive migration executed, and idempotent seeds provisioned.
+- [x] **Actions Taken Backend:** REST endpoints (`POST`, `GET`, `PATCH /api/tickets/:id/actions`) implemented with session-bound actor, field validation, and RBAC.
+- [x] **Actions Taken Frontend:** Interactive timeline/table, Create modal with dynamic follow-up toggle, Edit modal, and Requester read-only view.
+- [x] **Workflow & Concurrency Gate:** Authoritative resolution gate enforced; optimistic concurrency conflict detection returning HTTP 409 implemented and tested.
+- [x] **Role Dashboards:** Requester, Staff, and Admin dashboard endpoints and Zen Green UI components implemented with interactive drill-down routing.
+- [x] **Automated Test Suites:** Unit, API integration, UI component, responsive, authorization, workflow, regression, and Playwright E2E suites passing.
+- [x] **Peer Review Record:** Substantive peer review comments and author responses documented in `reviewer.md` for PR #1 through PR #6.
+- [x] **Visual Evidence:** High-resolution screenshots captured across Desktop, Tablet, and Mobile viewports in `artifacts/lab-04/screenshots/`.
 - [ ] **Final Integration:** `lab4-staging` merged into `main` with 100% clean test passes and zero regression defects.
 
 ---
