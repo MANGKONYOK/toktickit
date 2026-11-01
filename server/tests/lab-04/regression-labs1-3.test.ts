@@ -36,34 +36,31 @@ describe("Lab 4 Sprint Hardening: Schema Migration & Full Cross-Lab Regression (
 
     adminToken = signBearerToken({
       userId: adminUser.id,
-      email: adminUser.email,
       role: adminUser.role,
     });
     staffToken = signBearerToken({
       userId: staffUser.id,
-      email: staffUser.email,
       role: staffUser.role,
     });
     requesterToken = signBearerToken({
       userId: requesterUser.id,
-      email: requesterUser.email,
       role: requesterUser.role,
     });
 
     // Create a dedicated ticket for regression testing
-    const category = await prisma.category.findFirst();
+    const category = await prisma.category.findFirstOrThrow();
+    const system = await prisma.relatedSystem.findFirstOrThrow();
     const createdTicket = await prisma.ticket.create({
       data: {
         ticketNumber: `TKT-REG-${Date.now()}`,
         requesterId: requesterUser.id,
-        categoryId: category ? category.id : 1,
+        categoryId: category.id,
+        relatedSystemId: system.id,
         summary: "Regression verification ticket",
         description: "Testing schema preservation and backward compatibility across Labs 1-4",
         itPriority: "LOW",
         requestedPriority: "LOW",
         currentStatus: "OPEN",
-        status: "OPEN",
-        statusHistory: ["NEW", "OPEN"],
       },
     });
     regressionTicketId = createdTicket.id;
@@ -95,19 +92,19 @@ describe("Lab 4 Sprint Hardening: Schema Migration & Full Cross-Lab Regression (
 
     it("verifies parent-child cascade deletion for ActionTaken on Ticket deletion", async () => {
       // Create temporary ticket with child action
-      const category = await prisma.category.findFirst();
+      const category = await prisma.category.findFirstOrThrow();
+      const system = await prisma.relatedSystem.findFirstOrThrow();
       const tempTicket = await prisma.ticket.create({
         data: {
           ticketNumber: `TKT-TEMP-${Date.now()}`,
           requesterId: requesterUser.id,
-          categoryId: category ? category.id : 1,
+          categoryId: category.id,
+          relatedSystemId: system.id,
           summary: "Temporary cascade test ticket",
           description: "Cascade deletion test",
           itPriority: "LOW",
           requestedPriority: "LOW",
           currentStatus: "OPEN",
-          status: "OPEN",
-          statusHistory: ["NEW", "OPEN"],
         },
       });
 
@@ -186,9 +183,9 @@ describe("Lab 4 Sprint Hardening: Schema Migration & Full Cross-Lab Regression (
         .set("Authorization", `Bearer ${requesterToken}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(Array.isArray(res.body.tickets)).toBe(true);
       // All returned tickets must belong to requesterUser
-      res.body.forEach((t: any) => {
+      res.body.tickets.forEach((t: any) => {
         expect(t.requesterId).toBe(requesterUser.id);
       });
     });
@@ -201,7 +198,6 @@ describe("Lab 4 Sprint Hardening: Schema Migration & Full Cross-Lab Regression (
       if (otherRequester) {
         const otherToken = signBearerToken({
           userId: otherRequester.id,
-          email: otherRequester.email,
           role: otherRequester.role,
         });
 
@@ -269,7 +265,7 @@ describe("Lab 4 Sprint Hardening: Schema Migration & Full Cross-Lab Regression (
 
     it("maintains confidentiality boundary: Requesters cannot read internal notes", async () => {
       const res = await request(app)
-        .get(`/api/tickets/${regressionTicketId}/notes`)
+        .get(`/api/staff/tickets/${regressionTicketId}/notes`)
         .set("Authorization", `Bearer ${requesterToken}`);
 
       expect(res.status).toBe(403);

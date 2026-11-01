@@ -17,6 +17,17 @@ function resetDatabase() {
   }
 }
 
+async function openLoginModal(page: any) {
+  const selectorBtn = page.locator('[data-testid="selector-signin-btn"]');
+  if (await selectorBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await selectorBtn.click();
+  } else {
+    const navBtn = page.locator('[data-testid="nav-signin-button"]');
+    await expect(navBtn).toBeVisible({ timeout: 10000 });
+    await navBtn.click({ force: true });
+  }
+}
+
 test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01..02, BR-01..08)", () => {
   test.beforeAll(async () => {
     fs.mkdirSync(ACTIONS_SCREENSHOT_DIR, { recursive: true });
@@ -39,11 +50,9 @@ test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01
     // -------------------------------------------------------------------------
     await page.goto("/");
 
-    const signInBtn = page.locator('[data-testid="nav-signin-button"]');
-    await expect(signInBtn).toBeVisible({ timeout: 15000 });
-    await signInBtn.click();
+    await openLoginModal(page);
 
-    await page.locator('[data-testid="login-email-input"]').fill("john.doe@email.com");
+    await page.locator('[data-testid="login-email-input"]').fill("somchai.it@email.com");
     await page.locator('[data-testid="login-password-input"]').fill("Password@2026");
     await page.locator('[data-testid="login-submit-button"]').click();
 
@@ -56,7 +65,10 @@ test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01
     await page.locator('[data-testid="nav-staff-queue"]').click();
 
     // Select the first ticket in the queue
-    const firstTicket = page.locator('[data-testid="staff-tickets-table"] tbody tr').first();
+    const firstTicket =
+      testInfo.project.name === "mobile"
+        ? page.locator('[data-testid^="staff-ticket-card-"]').first()
+        : page.locator('[data-testid="staff-tickets-table"] tbody tr').first();
     await expect(firstTicket).toBeVisible({ timeout: 10000 });
     await firstTicket.click();
 
@@ -106,9 +118,9 @@ test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01
     // Modal should close and action card should appear in timeline
     await expect(actionModal).not.toBeVisible({ timeout: 5000 });
 
-    const newActionDesc = page.getByText(
-      "Replaced faulty CAT6 patch cable and performed loopback continuity test"
-    );
+    const newActionDesc = page
+      .getByText("Replaced faulty CAT6 patch cable and performed loopback continuity test")
+      .first();
     await expect(newActionDesc).toBeVisible({ timeout: 10000 });
 
     if (testInfo.project.name === "desktop") {
@@ -122,18 +134,17 @@ test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01
     // Step 3: Requester Read-Only Seam Verification (AC-02)
     // -------------------------------------------------------------------------
     // Sign out from Staff
-    const signOutBtn = page.locator('[data-testid="nav-signout-button"]');
+    const signOutBtn = page.locator('[data-testid="nav-logout-button"]');
     if (await signOutBtn.isVisible()) {
       await signOutBtn.click();
+      await page.waitForTimeout(500);
     } else {
       await page.context().clearCookies();
       await page.goto("/");
     }
 
     // Sign in as Requester
-    const requesterSignIn = page.locator('[data-testid="nav-signin-button"]');
-    await expect(requesterSignIn).toBeVisible({ timeout: 10000 });
-    await requesterSignIn.click();
+    await openLoginModal(page);
 
     await page.locator('[data-testid="login-email-input"]').fill("alice.johnson@email.com");
     await page.locator('[data-testid="login-password-input"]').fill("Password@2026");
@@ -148,24 +159,26 @@ test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01
     await page.locator('[data-testid="nav-my-tickets"]').click();
 
     // Open first ticket detail
-    const requesterFirstTicket = page.locator('[data-testid="ticket-row"]').first();
-    if (await requesterFirstTicket.isVisible()) {
-      await requesterFirstTicket.click();
+    const requesterFirstTicket =
+      testInfo.project.name === "mobile"
+        ? page.locator('[data-testid^="ticket-card-"]').first()
+        : page.locator('[data-testid^="ticket-row-"]').first();
+    await expect(requesterFirstTicket).toBeVisible({ timeout: 10000 });
+    await requesterFirstTicket.click();
 
-      // Verify Ticket Detail view is rendered
-      await expect(page.locator('[data-testid="ticket-detail-view"]')).toBeVisible({
-        timeout: 10000,
+    // Verify Ticket Detail view is rendered
+    await expect(page.locator('[data-testid="ticket-detail-view"]')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Actions section should be present, but '+ Record Action' button must NOT exist
+    await expect(page.locator('[data-testid="record-action-button"]')).not.toBeVisible();
+
+    if (testInfo.project.name === "desktop") {
+      await page.screenshot({
+        path: path.join(ACTIONS_SCREENSHOT_DIR, "03-requester-readonly-actions.png"),
+        fullPage: true,
       });
-
-      // Actions section should be present, but '+ Record Action' button must NOT exist
-      await expect(page.locator('[data-testid="record-action-button"]')).not.toBeVisible();
-
-      if (testInfo.project.name === "desktop") {
-        await page.screenshot({
-          path: path.join(ACTIONS_SCREENSHOT_DIR, "03-requester-readonly-actions.png"),
-          fullPage: true,
-        });
-      }
     }
   });
 });

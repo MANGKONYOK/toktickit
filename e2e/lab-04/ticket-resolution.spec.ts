@@ -17,6 +17,17 @@ function resetDatabase() {
   }
 }
 
+async function openLoginModal(page: any) {
+  const selectorBtn = page.locator('[data-testid="selector-signin-btn"]');
+  if (await selectorBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await selectorBtn.click();
+  } else {
+    const navBtn = page.locator('[data-testid="nav-signin-button"]');
+    await expect(navBtn).toBeVisible({ timeout: 10000 });
+    await navBtn.click({ force: true });
+  }
+}
+
 test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-02 / AC-08..12, BR-09..14)", () => {
   test.beforeAll(async () => {
     fs.mkdirSync(RESOLUTION_SCREENSHOT_DIR, { recursive: true });
@@ -39,9 +50,7 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
     // -------------------------------------------------------------------------
     await page.goto("/");
 
-    const signInBtn = page.locator('[data-testid="nav-signin-button"]');
-    await expect(signInBtn).toBeVisible({ timeout: 15000 });
-    await signInBtn.click();
+    await openLoginModal(page);
 
     await page.locator('[data-testid="login-email-input"]').fill("alice.johnson@email.com");
     await page.locator('[data-testid="login-password-input"]').fill("Password@2026");
@@ -54,7 +63,10 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
     // Go to My Tickets
     await page.locator('[data-testid="nav-my-tickets"]').click();
 
-    const firstTicket = page.locator('[data-testid="ticket-row"]').first();
+    const firstTicket =
+      testInfo.project.name === "mobile"
+        ? page.locator('[data-testid^="ticket-card-"]').first()
+        : page.locator('[data-testid^="ticket-row-"]').first();
     await expect(firstTicket).toBeVisible({ timeout: 10000 });
     await firstTicket.click();
 
@@ -66,37 +78,36 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
     const indicateBtn = page.locator('[data-testid="indicate-resolved-btn"]');
     if (await indicateBtn.isVisible()) {
       await indicateBtn.click();
+    }
 
-      // Verify advisory badge renders
-      const resolvedBadge = page.locator('[data-testid="problem-resolved-badge"]');
-      await expect(resolvedBadge).toBeVisible({ timeout: 5000 });
+    // Verify advisory badge renders
+    const resolvedBadge = page.locator('[data-testid="problem-resolved-badge"]');
+    await expect(resolvedBadge).toBeVisible({ timeout: 5000 });
 
-      if (testInfo.project.name === "desktop") {
-        await page.screenshot({
-          path: path.join(RESOLUTION_SCREENSHOT_DIR, "01-requester-advisory-resolved.png"),
-          fullPage: true,
-        });
-      }
+    if (testInfo.project.name === "desktop") {
+      await page.screenshot({
+        path: path.join(RESOLUTION_SCREENSHOT_DIR, "01-requester-advisory-resolved.png"),
+        fullPage: true,
+      });
     }
 
     // -------------------------------------------------------------------------
     // Step 2: IT Staff Reviews & Formally Resolves Ticket (AC-09 / FLOW-02)
     // -------------------------------------------------------------------------
     // Logout Requester
-    const signOutBtn = page.locator('[data-testid="nav-signout-button"]');
+    const signOutBtn = page.locator('[data-testid="nav-logout-button"]');
     if (await signOutBtn.isVisible()) {
       await signOutBtn.click();
+      await page.waitForTimeout(500);
     } else {
       await page.context().clearCookies();
       await page.goto("/");
     }
 
     // Login IT Staff
-    const staffSignIn = page.locator('[data-testid="nav-signin-button"]');
-    await expect(staffSignIn).toBeVisible({ timeout: 10000 });
-    await staffSignIn.click();
+    await openLoginModal(page);
 
-    await page.locator('[data-testid="login-email-input"]').fill("john.doe@email.com");
+    await page.locator('[data-testid="login-email-input"]').fill("somchai.it@email.com");
     await page.locator('[data-testid="login-password-input"]').fill("Password@2026");
     await page.locator('[data-testid="login-submit-button"]').click();
 
@@ -107,7 +118,10 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
     // Go to Staff Ticket Queue
     await page.locator('[data-testid="nav-staff-queue"]').click();
 
-    const staffTicketRow = page.locator('[data-testid="staff-tickets-table"] tbody tr').first();
+    const staffTicketRow =
+      testInfo.project.name === "mobile"
+        ? page.locator('[data-testid^="staff-ticket-card-"]').first()
+        : page.locator('[data-testid="staff-tickets-table"] tbody tr').first();
     await expect(staffTicketRow).toBeVisible({ timeout: 10000 });
     await staffTicketRow.click();
 
@@ -141,11 +155,9 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
   }, testInfo) => {
     await page.goto("/");
 
-    const signInBtn = page.locator('[data-testid="nav-signin-button"]');
-    await expect(signInBtn).toBeVisible({ timeout: 15000 });
-    await signInBtn.click();
+    await openLoginModal(page);
 
-    await page.locator('[data-testid="login-email-input"]').fill("john.doe@email.com");
+    await page.locator('[data-testid="login-email-input"]').fill("somchai.it@email.com");
     await page.locator('[data-testid="login-password-input"]').fill("Password@2026");
     await page.locator('[data-testid="login-submit-button"]').click();
 
@@ -154,7 +166,10 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
     });
 
     await page.locator('[data-testid="nav-staff-queue"]').click();
-    const firstTicket = page.locator('[data-testid="staff-tickets-table"] tbody tr').first();
+    const firstTicket =
+      testInfo.project.name === "mobile"
+        ? page.locator('[data-testid^="staff-ticket-card-"]').first()
+        : page.locator('[data-testid="staff-tickets-table"] tbody tr').first();
     await expect(firstTicket).toBeVisible({ timeout: 10000 });
     await firstTicket.click();
 

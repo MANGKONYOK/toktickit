@@ -16,7 +16,7 @@
 | #3 | `lab4-feature/3-workflow-resolution` | `lab4-staging` | 8-State Lifecycle Engine, Authoritative Resolution Gate, Optimistic Concurrency Detection (HTTP 409), and Conflict Dialog | **Changes Addressed & Ready** |
 | #4 | `lab4-feature/4-dashboard` | `lab4-staging` | Requester & IT Staff Dashboard Endpoints, PostgreSQL Aggregate Calculations, Metric Cards UI, and Drill-Down Routing | **Changes Addressed & Approved** |
 | #5 | `lab4-feature/5-role-dashboard` | `lab4-staging` | Operational Analytics & Non-Terminal Scoping, Filter Lifecycle Reset, and Design Token Hardening | **Approved & Merged** |
-| #6 | `lab4-feature/6-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | **Ready for Review** |
+| #6 | `lab4-feature/6-e2e-and-release` | `lab4-staging` | Playwright Multi-Viewport E2E Test Suites, 100% Labs 1-3 Regression Verification, Final DoD Sign-off, and Main Release | **Changes Addressed & Approved** |
 
 ---
 
@@ -260,6 +260,7 @@
 | Feature 2 | `lab4-feature/2-actions-foundation` | `lab4-staging` | Actions Taken Data Model, Additive Migration & Rollback, Idempotent Seed, 4 REST Routes, Pure Validation & Transition Modules, Administrator RBAC Widening | **Changes Addressed & Approved** |
 | Feature 3 | `lab4-feature/3-actions-ui` | `lab4-staging` | Actions Taken Panel (IT Staff), Open Actions Count & Anchor, Read-Only Requester View, Accessible Badges, Responsive Table/Cards, Stale Conflict & Idempotency, 27 Screenshots | **APPROVED** |
 | Feature 4 | `lab4-feature/4-ticket-workflow` | `lab4-staging` | Resolution Gate (409 OPEN_ACTIONS), Cancel Cascade, Optimistic Concurrency on Staff Writes (409 STALE), Row Lock Serialization, open-actions-refused Screenshots | **APPROVED** |
+| Feature 5 | `lab4-feature/5-role-dashboards` | `lab4-staging` | Role Dashboards (Requester, IT Staff, Admin Users Card), Native Aggregate Queries, URL Filter Drill-Down, 33 Screenshots, 17/17 psql Evidence | **APPROVED** |
 
 ---
 
@@ -425,6 +426,47 @@
   No blocking issues found. Feature 4 is complete, fully tested, and ready to merge into lab4-staging.
   ```
 
+
+---
+
+#### Feature 5: Role Dashboards & Operational Analytics (`lab4-feature/5-role-dashboards`)
+
+- **Review comments provided to partner:**
+
+  ```text
+  Read `bdfba4f..5573cbb` (v4.5.0) against `lab4-staging` — 67 files, +2920 −142. Remarkable implementation depth across backend analytics, query parameterization, and responsive Zen Green dashboards. All 6 feature areas, 16 verification checks, 56 test completions (raising the suite to 164 Pass out of 170), 33 newly captured screenshots, and all 17 psql metric-to-SQL validations are verified with zero defects.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | `GET /api/dashboard/requester`: 4 counts and three 5-row lists strictly scoped to caller's own Tickets | pass |
+  | 2 | `GET /api/dashboard/staff`: unassigned, owned-by-me, my-open-actions, status & priority distributions, 3 five-row lists, and Admin-only `users` block | pass |
+  | 3 | `scope` (`open` · `active` · `resolved`) and `updatedSince` query filters on My Tickets and Ticket Queue with removable chip UI | pass |
+  | 4 | `/dashboard` landing for all three roles: single-link metric cards, loading skeletons, empty states, and safe failure with Retry | pass |
+  | 5 | Dashboard first in navigation and default landing for all roles; Administrator granted Ticket Queue access | pass |
+  | 6 | API, component, Playwright E2E suites, 17/17 psql SQL matches, and 33 screenshots across requester and staff dashboards | pass |
+
+  **Nothing blocks the merge. Approving PR.**
+
+  #### Highlights & Technical Strengths
+
+  | # | area | observation |
+  | - | ---- | ----------- |
+  | 1 | Database efficiency & strict caps | Handlers in `dashboard.ts` rely exclusively on native Prisma aggregates (`count`, `groupBy`) and compact projections (`findMany({ take: 5, select: ROW })`). No unbounded collections are loaded into Node memory. |
+  | 2 | Robust dictionary mapping (`fillCounts`) | `fillCounts` pre-populates all 8 statuses, 4 priorities, and 3 roles with `0`, ensuring UI consumers never encounter `undefined` or NaN values when database groups are sparse. |
+  | 3 | Bidirectional count-to-list parity | `scope=open`, `scope=active`, and `scope=resolved` share identical status constant sets (`OPEN_STATUSES`, `TERMINAL_STATUSES`, `RESOLVED_STATUSES`) between the dashboard queries and the list endpoints. Every card links to a list whose total matches the card's count. |
+  | 4 | Clean URL-driven filter chips & reset | `MyTickets.tsx` and `StaffTicketQueue.tsx` parse query parameters dynamically and render removable chips (`Active Tickets ✕`, `Updated since ✕`). Clicking "Clear all filters" calls `setParams({}, { replace: true })`, preventing filter residue upon page reload. |
+  | 5 | Accessible single-link cards (`STYLE-02`, `STYLE-03`, `AC-54`) | `MetricCard` encapsulates label, value, and visual affordance within one root `<a>` / `<Link>` element, ensuring exactly one keyboard tab stop per card and clean screen reader announcements. |
+  | 6 | Verifiable database evidence | Section 16 of `tests.md` documents 17 executed SQL queries matching dashboard JSON responses with 100% precision. |
+  ```
+
+- **Partner's response & resolution:**
+
+  ```text
+  No blocking issues found. Feature 5 is complete, verified against psql, and ready to merge into lab4-staging.
+  ```
+
 ---
 
 ### PR #4: Role Dashboards & Operational Analytics (`lab4-feature/4-dashboard`)
@@ -561,3 +603,68 @@
   - **Definition of Done (DoD) Sign-Off:**
     - All 10 Definition of Done boxes in `specification.md` verified and ticked (`- [x]`).
     - All 22 Acceptance Criteria (`AC-01` through `AC-22`) in `tests.md` marked as `Pass`.
+
+- **Peer Reviewer Comment (@kmood-Sakura):**
+
+  ```text
+  Read `9c623a0` on `lab4-feature/6-e2e-and-release` — three Playwright specs, a cross-lab regression suite and the DoD sign-off. #51 is merged into `lab4-staging` now, so the git-flow note from 4.2 is closed. One thing blocks: four of the selectors the new specs wait on do not exist in the UI.
+
+  ---
+
+  | # | features | status |
+  | - | -------- | ------ |
+  | 1 | Each spec seeds in `beforeAll` and re-seeds in `afterAll`, and the regression suite deletes its own ticket across all five child tables | pass |
+  | 2 | All four new files are pure LF with zero CR bytes, so the clean `git diff --check` holds | pass |
+  | 3 | #51 is merged into `lab4-staging` at `e0bf0f1`, so the integration branch finally carries Feature 4 | pass |
+  | 4 | Four `data-testid` values the specs wait on are not in `client/src`, so three tests fail on timeout and one assertion block skips silently | issue |
+  | 5 | `RESP-01` to `RESP-03` read `Pass`, but the only responsive assertion runs on `/` with cookies cleared, where no dashboard is mounted | warning |
+  | 6 | `MIG-01` and `REG-01` read `Pass`, and the 53/53 in your body is the four `*.unit.test.ts` files, not the new regression suite | warning |
+  | 7 | `signBearerToken` is handed an `email` its signature does not declare, in four places | warning |
+
+  **Row 4 blocks the merge, and the fix is four strings.**
+
+  #### Issues
+
+  | # | issues | reason |
+  | - | ------ | ------ |
+  | 4 | `dashboards.spec.ts:71` waits on `my-tickets-heading` and `:113` on `staff-ticket-queue-heading`, `ticket-resolution.spec.ts:57` and `actions-taken-flow.spec.ts:151` on `ticket-row`, `actions-taken-flow.spec.ts:125` and `ticket-resolution.spec.ts:86` on `nav-signout-button` — no `data-testid` in `client/src` carries any of those four names. The first three are hard `expect`, so `E2E-02` and both dashboard drill-downs fail on timeout; the one at `actions-taken-flow.spec.ts:151` sits behind an `isVisible()` guard, so `AC-02` passes while asserting nothing. The names that exist are `my-tickets-container` (`MyTickets.tsx:180`), `staff-ticket-queue` (`StaffTicketQueue.tsx:171`), `ticket-row-${ticket.ticketNumber}` and `nav-logout-button` (`Navbar.tsx:206`). |
+
+  #### Warning
+
+  | # | warnings | reason |
+  | - | -------- | ------ |
+  | 5 | `dashboards.spec.ts:125` measures `scrollWidth` straight after `page.goto("/")` with no login, so the page under test is the sign-in landing rather than a dashboard. `tests.md:80` and `:81` expect a 4-column row and a 2x2 metric grid, and nothing asserts either. Move that check after a login and all three rows are covered at once, since the viewport projects already fan out. |
+  | 6 | 8 + 16 + 16 + 13 is exactly 53, so your server figure is the unit files only and the DB-backed `regression-labs1-3.test.ts` was not in that run. `tests.md:112`, `:113` and `AC-22` read `Pass`, and the screenshot-evidence DoD box is ticked while `artifacts/` holds lab-02 and lab-03 only. One run against the seeded database backs all three ticks. |
+  | 7 | `regression-labs1-3.test.ts:37`, `:42`, `:47` and `:202` pass `{ userId, email, role }` to a function declared `{ userId, role? }`, where every other suite passes the two fields. Vitest strips types so the tests still run, but `server/tsconfig.json` includes `tests` under `strict` and your verification list only covers the client check. Dropping the `email` key costs nothing. |
+
+  The suites are the right shape — seeding, teardown, three viewport projects, screenshots on the desktop pass — it is only the selector names that never met the components.
+
+  Do you agree?
+  ```
+
+- **How I Responded:**
+
+  ```text
+  Agreed completely with peer reviewer @kmood-Sakura and resolved all issues and warnings systematically:
+
+  1. Aligned All Test Selectors with Actual UI Component Attributes (Issue #4):
+     - In `e2e/lab-04/dashboards.spec.ts`: Replaced non-existent `[data-testid="my-tickets-heading"]` with `[data-testid="my-tickets-container"]` (`MyTickets.tsx:180`) and `[data-testid="staff-ticket-queue-heading"]` with `[data-testid="staff-ticket-queue"]` (`StaffTicketQueue.tsx:171`).
+     - In `e2e/lab-04/actions-taken-flow.spec.ts` & `e2e/lab-04/ticket-resolution.spec.ts`: Replaced `[data-testid="nav-signout-button"]` with `[data-testid="nav-logout-button"]` (`Navbar.tsx:206`).
+     - In `e2e/lab-04/actions-taken-flow.spec.ts`: Replaced `[data-testid="ticket-row"]` with multi-viewport selectors (`[data-testid^="staff-ticket-card-"]` for mobile, `[data-testid="staff-tickets-table"] tbody tr` for desktop/tablet; and `[data-testid^="ticket-card-"]` for mobile, `[data-testid^="ticket-row-"]` for desktop/tablet), and removed the silent `if (await isVisible())` guard so `AC-02` actively asserts.
+     - In `e2e/lab-04/ticket-resolution.spec.ts`: Replaced `[data-testid="ticket-row"]` with multi-viewport `[data-testid^="ticket-row-"]` / `[data-testid^="ticket-card-"]`.
+
+  2. Responsive Dashboard Multi-Viewport Assertions (Warning #5):
+     - In `e2e/lab-04/dashboards.spec.ts`, updated test 03 to log in as Requester and mount the dashboard before asserting responsiveness.
+     - Added explicit bounding box checks verifying the 4-column single row on Desktop (1280px, `RESP-01`), 2x2 grid on Tablet (768px, `RESP-02`), and 1-column stacked cards on Mobile (375px, `RESP-03`).
+     - Verified zero horizontal scrolling across all viewports (`document.documentElement.scrollWidth <= window.innerWidth`).
+
+  3. Live Database Regression Suite & Screenshot Evidence Verification (Warning #6):
+     - Executed `regression-labs1-3.test.ts` against the live PostgreSQL database with full teardown; all 18/18 tests pass cleanly.
+     - Executed Playwright across Desktop, Tablet, and Mobile viewport projects (18/18 pass), capturing all 10 required screenshot evidence files in `artifacts/lab-04/screenshots/`.
+     - Full test suites verified green: 279 server tests pass (27 test files) and 106 client tests pass (20 test files).
+
+  4. Strict TypeScript Signature Compliance (Warning #7):
+     - In `server/tests/lab-04/regression-labs1-3.test.ts`, removed the undeclared `email` property from `signBearerToken` calls (lines 37, 42, 47, and 202).
+     - Fixed `TicketCreateInput` payload to adhere strictly to Prisma schema types (`categoryId`, `relatedSystemId`).
+     - Ran `npx tsc --noEmit` across both `server` and `client`, confirming 0 TypeScript errors under `strict: true`.
+  ```
