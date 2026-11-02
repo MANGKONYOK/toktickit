@@ -64,6 +64,12 @@ test.describe("IT Staff Actions Taken & Requester Read-Only Seam (E2E-01 / AC-01
     // Navigate to Staff Ticket Queue
     await page.locator('[data-testid="nav-staff-queue"]').click();
 
+    // Filter to OPEN tickets to ensure the ticket is active and not in a locked terminal state (CLOSED/CANCELLED)
+    const statusSelect = page.locator('[data-testid="staff-queue-status"]');
+    await expect(statusSelect).toBeVisible({ timeout: 10000 });
+    await statusSelect.selectOption("OPEN");
+    await page.waitForTimeout(500);
+
     // Select the first ticket in the queue
     const firstTicket =
       testInfo.project.name === "mobile"

@@ -118,6 +118,13 @@ test.describe("Authoritative Ticket Resolution Gate & Concurrency Control (E2E-0
     // Go to Staff Ticket Queue
     await page.locator('[data-testid="nav-staff-queue"]').click();
 
+    // Filter to OPEN tickets so status transition to RESOLVED is active
+    const staffStatusFilter = page.locator('[data-testid="staff-queue-status"]');
+    if (await staffStatusFilter.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await staffStatusFilter.selectOption("OPEN");
+      await page.waitForTimeout(500);
+    }
+
     const staffTicketRow =
       testInfo.project.name === "mobile"
         ? page.locator('[data-testid^="staff-ticket-card-"]').first()
