@@ -143,3 +143,18 @@ graph TD
 | **AC-20** (Tablet & Mobile Zero Horizontal Scroll) | `RESP-02`, `RESP-03` | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | **AC-21** (Admin Augmented Dashboard with Users) | `API-08` | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 | **AC-22** (Full Labs 1-3 Regression Passing) | `MIG-01`, `REG-01` | `server/tests/lab-04/regression-labs1-3.test.ts` | Pass |
+
+---
+
+## 4. Test Execution Commands
+
+```bash
+# 1. Server Unit, API Integration, Workflow, Concurrency & Regression Tests (27 files, 279 passed)
+cd server && npm test
+
+# 2. Client Component, Form Validation, Dashboard & Style Tests (20 files, 106 passed)
+cd client && npm test
+
+# 3. Playwright Multi-Viewport End-to-End Suites (3 specs across Desktop, Tablet, Mobile: 18 passed)
+npx playwright test e2e/lab-04/
+```
